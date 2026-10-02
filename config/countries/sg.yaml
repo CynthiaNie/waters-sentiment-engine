@@ -1,0 +1,60 @@
+# Example country profile. Edit it in the web app (1 · Country setup), or add
+# more countries from the sidebar. Saving from the web app rewrites this file
+# without comments.
+code: sg
+name: Singapore
+languages: [en, zh]
+currency: SGD
+
+youtube:
+  enabled: true
+  region: SG
+  max_videos: 8
+  max_comments: 100
+
+# A plain string searches in the first language; {text, lang} sets another.
+queries:
+  - "water dispenser Singapore"
+  - "water purifier Singapore review"
+  - "instant hot water dispenser"
+  - "water filter jug worth it"
+  - "water dispenser mould tank"
+  - "water dispenser filter cost"
+  - "tap water Singapore safe to drink"
+  - {text: "新加坡 饮水机 推荐", lang: zh}
+
+# Brand watchlist. Longest match wins, so "Brita Marella" beats "Brita".
+# `aliases` maps other spellings and local scripts to the same brand.
+products:
+  - {brand: Philips, category: countertop_dispenser, models: []}
+  - {brand: Xiaomi, category: countertop_dispenser, models: [], aliases: [小米]}
+  - {brand: Coway, category: purifier, models: []}
+  - {brand: LG, category: purifier, models: [PuriCare]}
+  - {brand: Brita, category: jug_filter, models: [Marella, Maxtra]}
+
+category_terms:
+  countertop_dispenser: [饮水机]
+  purifier: [净水器]
+  jug_filter: [滤水壶]
+
+reddit:
+  enabled: false
+  subreddits: [singapore, askSingapore]
+  limit_per_query: 25
+  comments: true
+
+# A pasted website: selectors are normally detected automatically when a page
+# is added in the web app. These were verified by hand against XenForo 2 markup.
+websites:
+  - name: hardwarezone
+    enabled: true
+    urls:
+      - https://forums.hardwarezone.com.sg/threads/water-dispenser-recommendations.7167782/
+    max_pages: 20
+    page_param: page
+    selectors:
+      post: ".message-inner"
+      body: ".message-body"
+      author: ".message-name"
+      date: "time"
+      strip: ".bbCodeBlock, .message-signature, script, style"

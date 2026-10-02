@@ -1,0 +1,91 @@
+# WATERS taxonomy: the consumer needs a post is coded against.
+#
+# The needs are not equivalent in kind: W/A/T/S are MOTIVATIONS (drive the
+# category decision), E and COST are CONSTRAINTS, and R is a GATE that governs
+# the BRAND decision rather than the category decision.
+#
+# Posts are coded at MENTION level: a post yields 0..n needs, each with its own
+# sentiment. Mention frequency is not comparable with primary-need coding
+# (one need per respondent) as used in interviews or surveys.
+
+codes:
+  W:
+    name: Wellbeing
+    kind: motivation
+    definition: >
+      Health and safety of the user or their dependents. The need is about protecting
+      someone, not about convenience or taste. Disambiguation: worry about the
+      MACHINE's hygiene (mould, tank, spout) is R, not W; gift-giving is S, but
+      care FOR the recipient's health is W — code what the span shows.
+    signals: [children, kids, baby, infant, formula milk, elderly, parents, scalding,
+              burns, child lock, safety, medication, illness, boiled water for babies]
+
+  A:
+    name: Availability
+    kind: motivation
+    definition: >
+      Speed, on-demand access and the elimination of waiting. Includes throughput and
+      capacity when the complaint is about waiting or running out.
+    signals: [instant, fast, quick, waiting, boil time, kettle, queue, refill,
+              capacity, runs out, slow to heat, on demand, immediately, throughput]
+
+  T:
+    name: Taste
+    kind: motivation
+    definition: >
+      Sensory quality and precision. Flavour, odour, temperature accuracy, and the
+      suitability of the water for a specific preparation.
+    signals: [taste, flavour, flavor, odour, odor, smell, plastic taste,
+              temperature accuracy, exact temperature, coffee, espresso, pour over,
+              tea, brewing, ice quality, mineral, chlorine taste]
+
+  E:
+    name: Environment
+    kind: constraint
+    definition: >
+      Physical fit and installation. Footprint, counter space, size, weight, drilling,
+      plumbing, rewiring and portability. Appearance counts here only when the concern
+      is fitting the space, not impressing other people.
+    signals: [size, footprint, counter space, bulky, compact, fits, installation,
+              drilling, plumbing, rewiring, tankless, direct piping, portable,
+              moving house, rental, small kitchen]
+
+  R:
+    name: Reassurance
+    kind: gate         # governs the BRAND decision, not the category decision
+    definition: >
+      Hygiene, brand credibility and after-sales confidence. Anything about whether the
+      machine or the company can be trusted over time. This is the gate on the BRAND
+      choice: it rarely stops someone wanting the category, it stops them buying a
+      particular brand.
+    signals: [mould, mold, algae, bacteria, tank cleaning, sterilisation, sterilization,
+              filter change, filter life, servicing, service centre, warranty,
+              certification, NSF, spare parts, brand trust, made in China, reliability,
+              broke down, customer service]
+
+  S:
+    name: Social and self-image
+    kind: motivation
+    definition: >
+      Hosting, display, identity and aesthetics as self-expression. The concern is how
+      the machine appears to other people or how it fits the owner's sense of their home.
+    signals: [guests, visitors, entertaining, hosting, party, looks good, stylish,
+              design statement, matches my kitchen, embarrassing, aesthetic]
+
+  COST:
+    name: Cost
+    kind: constraint
+    definition: >
+      Price, value for money and running costs. A constraint rather than a need, but
+      counted separately so it can be analysed.
+    signals: [price, expensive, cheap, worth it, value for money, filter cost,
+              running cost, subscription, promotion, overpriced]
+
+  OTHER:
+    name: Other
+    kind: review-flag
+    definition: >
+      Relevant to the category but fitting none of the above. Use this rather than
+      forcing a poor fit. Frequent use of OTHER is a signal that the taxonomy needs
+      review before the survey instrument is finalised.
+    signals: [noise, smart app, wifi, energy consumption, delivery experience]
