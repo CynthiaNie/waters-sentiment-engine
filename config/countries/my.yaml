@@ -1,0 +1,137 @@
+code: my
+name: Malaysia
+languages:
+- en
+- ms
+- zh
+currency: MYR
+youtube:
+  enabled: true
+  region: MY
+  max_videos: 8
+  max_comments: 100
+queries:
+- water dispenser malaysia
+- water filter malaysia review
+- best water purifier malaysia
+- coway vs cuckoo water purifier
+- coway water filter rental worth it
+- cuckoo water purifier review
+- water dispenser hot water baby milk
+- water dispenser tank mould
+- water filter replacement cost
+- malaysia tap water safe to drink
+- brita filter jug malaysia
+- text: penapis air terbaik
+  lang: ms
+- text: penapis air coway atau cuckoo
+  lang: ms
+- text: dispenser air panas sejuk
+  lang: ms
+- text: air paip selamat diminum ke
+  lang: ms
+- text: tukar filter penapis air harga
+  lang: ms
+- text: air panas untuk susu bayi dispenser
+  lang: ms
+- text: 滤水器 推荐 马来西亚
+  lang: zh
+- text: 净水器 coway cuckoo 哪个好
+  lang: zh
+- text: 饮水机 推荐
+  lang: zh
+- text: 滤水壶 brita
+  lang: zh
+products:
+- brand: Coway
+  category: purifier
+  models:
+  - Neo Plus
+  aliases:
+  - 코웨이
+- brand: Cuckoo
+  category: purifier
+  models: []
+  aliases:
+  - 쿠쿠
+  - 福库
+- brand: SK Magic
+  category: purifier
+  models: []
+  aliases:
+  - SK매직
+- brand: LG
+  category: purifier
+  models: []
+  aliases:
+  - LG PuriCare
+- brand: Diamond
+  category: purifier
+  models: []
+  aliases:
+  - Diamond Water
+- brand: Panasonic
+  category: purifier
+  models: []
+  aliases:
+  - 松下
+- brand: Xiaomi
+  category: purifier
+  models: []
+  aliases:
+  - 小米
+  - Mi
+- brand: Novita
+  category: countertop_dispenser
+  models: []
+- brand: Toyomi
+  category: countertop_dispenser
+  models: []
+- brand: Midea
+  category: countertop_dispenser
+  models: []
+  aliases:
+  - 美的
+- brand: Brita
+  category: jug_filter
+  models:
+  - Marella
+- brand: Philips
+  category: jug_filter
+  models: []
+  aliases:
+  - 飞利浦
+category_terms:
+  countertop_dispenser:
+  - dispenser air
+  - mesin air panas sejuk
+  - dispenser air panas
+  - 饮水机
+  - 即热饮水机
+  purifier:
+  - penapis air
+  - penulen air
+  - penapis air minuman
+  - 滤水器
+  - 净水器
+  jug_filter:
+  - jag penapis air
+  - penapis air jag
+  - 滤水壶
+  - 过滤水壶
+reddit:
+  enabled: false
+  subreddits:
+  - malaysia
+  - MalaysianPF
+  limit_per_query: 25
+  comments: true
+notes: 'AI-drafted; review brands and queries before collecting.
+
+  The Malaysian market is dominated by rental/subscription purifiers sold via agents (Coway, Cuckoo, SK
+  Magic, Diamond), so much discussion is about rental contracts and agents rather than countertop units;
+  confirm whether Novita, Toyomi and Midea dispensers are still
+  widely sold. Verify the Coway Neo Plus model is still current, and check whether local jug brands beyond
+  Brita and Philips (e.g. house brands on Shopee/Lazada) should be added.
+
+  Sites worth pasting threads from: Lowyat.NET Forum, Cari Infonet Forum.'

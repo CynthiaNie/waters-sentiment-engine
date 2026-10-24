@@ -237,8 +237,8 @@ ZH: dict[str, str] = {
     "Websites will see: {ua}": "网站将看到：{ua}",
     "Save organisation": "保存机构信息",
     "AI provider": "AI 服务商",
-    "Used to classify posts and to set up countries, websites and APIs. Claude is the default; Chinese providers can be used instead.":
-        "用于给帖子分类，以及设置国家、网站和 API。默认使用 Claude，也可改用国内服务商。",
+    "Used to classify posts and to set up countries, websites and APIs. Any listed provider works; pick one your organisation is allowed to use.":
+        "用于给帖子分类，以及设置国家、网站和 API。列表中的服务商均可使用，请选择贵公司获准使用的服务商。",
     "Provider": "服务商",
     "Endpoint address": "接口地址",
     "Filled in for known providers. For 'Other', paste the base address ending before /chat/completions.":
@@ -248,8 +248,8 @@ ZH: dict[str, str] = {
     "Keep the same model across countries and over time, or results stop being comparable.":
         "不同国家、不同时间请使用同一模型，否则结果不可比较。",
     "Setup helper model": "设置辅助模型",
-    "Reads websites, maps APIs and drafts countries. Automatic: claude-opus-5-5 on Claude, otherwise the classification model.":
-        "用于读取网站、识别 API 字段和起草国家配置。「自动」：使用 Claude 时为 claude-opus-5-5，否则与分类模型相同。",
+    "Reads websites, maps APIs and drafts countries. Automatic: the provider's recommended setup model, or the classification model if it has none.":
+        "用于读取网站、识别 API 字段和起草国家配置。「自动」：使用该服务商推荐的设置模型；若无，则与分类模型相同。",
     "Changing provider or model: results are no longer comparable with earlier runs. Do a new spot-check after classifying.":
         "更换服务商或模型后，结果将无法与之前的运行比较。分类完成后请重新抽查。",
     "Save AI provider": "保存 AI 服务商",
@@ -306,4 +306,17 @@ ZH: dict[str, str] = {
     "Could not call the API or it did not return JSON: {error}": "无法调用 API，或其未返回 JSON：{error}",
     "no items with text were found using this mapping": "按此映射没有找到含文本的条目",
     "selector error: {error}": "选择器错误：{error}",
+    # ------------------------------------------------------------ market check
+    "YouTube search also returns videos made for other countries. Before classifying, the AI checks each video and leaves out those that are not about {name} or whose commenters are elsewhere. Nothing is deleted: the workbook lists every video with the reason.":
+        "YouTube 搜索也会返回面向其他国家的视频。分类之前，AI 会逐个检查视频，排除与{name}无关、或评论者主要来自其他国家的视频。数据不会被删除：报表会列出每个视频及其判断理由。",
+    "Also keep videos with no sign of any one country": "同时保留看不出属于哪个国家的视频",
+    "For example general science explainers with comments from everywhere. Off by default: they say little about this market.":
+        "例如评论来自世界各地的通用科普视频。默认关闭：这类视频很难反映本市场。",
+    "Classify first runs the market check on new YouTube videos, so videos made for other countries are left out before any are classified.":
+        "「分类」会先对新的 YouTube 视频做市场检查，面向其他国家的视频在分类前就会被排除。",
+    "Market check: {kept} of {n} YouTube videos kept": "市场检查：{n} 个 YouTube 视频中保留 {kept} 个",
+    "Judged by the AI from each video's title, channel and comments. Comments from excluded videos are not analysed but stay in the database.":
+        "由 AI 根据每个视频的标题、频道和评论判断。被排除视频的评论不参与分析，但仍保留在数据库中。",
+    "{n} video(s) not checked yet; they are still counted. Run Classify to check them.":
+        "{n} 个视频尚未检查，目前仍计入分析。运行「分类」即可检查。",
 }

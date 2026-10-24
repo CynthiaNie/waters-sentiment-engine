@@ -1,6 +1,6 @@
 """One door to the language model, whichever provider is behind it.
 
-LLM_PROVIDER=anthropic          Claude through the Anthropic SDK (default).
+LLM_PROVIDER=anthropic          Claude through the Anthropic SDK.
 LLM_PROVIDER=openai_compatible  Any endpoint speaking the OpenAI chat-completions
                                 format: Qwen (DashScope), DeepSeek, Zhipu GLM,
                                 Doubao (Volcano Ark), or a company gateway.

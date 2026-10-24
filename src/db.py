@@ -33,6 +33,14 @@ CREATE TABLE IF NOT EXISTS sources (
     -- sampling frame has to be defended.
     in_scope       INTEGER NOT NULL DEFAULT 1,
     exclusion_note TEXT,
+    -- Market check (src/scope.py). The verdict is kept apart from in_scope so
+    -- the keep/drop rule can change without asking the model again. scope_by
+    -- is the model that judged, or 'manual' for a person's decision, which an
+    -- automatic re-check never overwrites.
+    scope_verdict    TEXT,
+    scope_reason     TEXT,
+    scope_by         TEXT,
+    scope_checked_at TEXT,
     UNIQUE(name, platform)
 );
 
@@ -149,7 +157,9 @@ def init(path: Path | None = None) -> None:
         # existed untouched, so add them here rather than requiring a re-collect.
         have = {r["name"] for r in con.execute("PRAGMA table_info(sources)")}
         for col, ddl in (("in_scope", "INTEGER NOT NULL DEFAULT 1"),
-                         ("exclusion_note", "TEXT")):
+                         ("exclusion_note", "TEXT"), ("scope_verdict", "TEXT"),
+                         ("scope_reason", "TEXT"), ("scope_by", "TEXT"),
+                         ("scope_checked_at", "TEXT")):
             if col not in have:
                 con.execute(f"ALTER TABLE sources ADD COLUMN {col} {ddl}")
         have = {r["name"] for r in con.execute("PRAGMA table_info(mentions)")}
@@ -252,6 +262,11 @@ def counts(con: sqlite3.Connection) -> dict[str, int]:
     for t in ("sources", "products", "documents", "mentions", "classified_docs",
               "spot_checks"):
         out[t] = con.execute(f"SELECT COUNT(*) c FROM {t}").fetchone()["c"]
+    # Mentions coded before their source was excluded stay in the table but are
+    # not analysed; this is the figure the analysis rests on.
+    out["mentions_in_scope"] = con.execute(
+        "SELECT COUNT(*) c FROM mentions m JOIN documents d ON d.id = m.document_id "
+        "JOIN sources s ON s.id = d.source_id WHERE s.in_scope = 1").fetchone()["c"]
     return out
 
 
@@ -263,9 +278,11 @@ def spot_sample(con: sqlite3.Connection, n: int = 20) -> list[dict[str, Any]]:
         "COALESCE(m.evidence_span_en, m.evidence_span) AS evidence_span_en, "
         "d.raw_text, COALESCE(p.brand, '') AS brand "
         "FROM mentions m JOIN documents d ON d.id = m.document_id "
+        "JOIN sources s ON s.id = d.source_id "
         "LEFT JOIN products p ON p.id = d.product_id "
         "LEFT JOIN spot_checks c ON c.mention_id = m.id "
-        "WHERE c.id IS NULL ORDER BY RANDOM() LIMIT ?", (n,)).fetchall()
+        "WHERE c.id IS NULL AND s.in_scope = 1 ORDER BY RANDOM() LIMIT ?",
+        (n,)).fetchall()
     return [dict(r) for r in rows]
 
 

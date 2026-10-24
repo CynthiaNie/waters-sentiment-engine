@@ -27,7 +27,10 @@ CATEGORIES = ["countertop_dispenser", "purifier", "jug_filter"]
 DEFAULTS: dict[str, Any] = {
     "languages": ["en"],
     "currency": "",
-    "youtube": {"enabled": True, "region": "", "max_videos": 8, "max_comments": 100},
+    # keep_global: also analyse videos the market check finds about the category
+    # with no sign of any one country. Off by default, as in the first Singapore study.
+    "youtube": {"enabled": True, "region": "", "max_videos": 8, "max_comments": 100,
+                "keep_global": False},
     "queries": [],
     "products": [],
     "category_terms": {c: [] for c in CATEGORIES},

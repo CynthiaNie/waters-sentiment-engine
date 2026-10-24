@@ -1,9 +1,8 @@
-# Example country profile. Edit it in the web app (1 · Country setup), or add
-# more countries from the sidebar. Saving from the web app rewrites this file
-# without comments.
+# Singapore. Saving this country from the web app rewrites the file without
+# comments.
 code: sg
 name: Singapore
-languages: [en, zh]
+languages: [en]
 currency: SGD
 
 youtube:
@@ -12,45 +11,75 @@ youtube:
   max_videos: 8
   max_comments: 100
 
-# A plain string searches in the first language; {text, lang} sets another.
+# Search terms applied across Reddit, YouTube and custom APIs. Add terms as
+# fieldwork surfaces vocabulary you had not anticipated. A query may also be
+# written as {text: "...", lang: zh} to search in another language.
 queries:
   - "water dispenser Singapore"
-  - "water purifier Singapore review"
+  - "water purifier Singapore"
   - "instant hot water dispenser"
+  - "countertop water dispenser review"
+  - "novita water dispenser"
+  - "Toyomi water dispenser"
+  - "Philips water dispenser"
+  - "Coway Singapore"
+  - "Wells water purifier"
+  - "Brita jug Singapore"
   - "water filter jug worth it"
+  - "tap water Singapore drink safe"
+  - "hot cold water dispenser HDB"
   - "water dispenser mould tank"
   - "water dispenser filter cost"
-  - "tap water Singapore safe to drink"
-  - {text: "新加坡 饮水机 推荐", lang: zh}
 
-# Brand watchlist. Longest match wins, so "Brita Marella" beats "Brita".
-# `aliases` maps other spellings and local scripts to the same brand.
+# Brand and model watchlist. Longest match wins, so list models where known.
+# Jug filters are included deliberately: they are the substitute product, so
+# the sentiment gap between jugs and dispensers evidences what drives trading up.
+# `aliases` holds other spellings or local-script names for the same brand.
 products:
-  - {brand: Philips, category: countertop_dispenser, models: []}
-  - {brand: Xiaomi, category: countertop_dispenser, models: [], aliases: [小米]}
-  - {brand: Coway, category: purifier, models: []}
+  - {brand: novita, category: countertop_dispenser, models: [HydroCube, Glacier, W29, W28, W12, W10, W55]}
+  - {brand: Toyomi, category: countertop_dispenser, models: []}
+  - {brand: Wells, category: countertop_dispenser, models: [The One, Aqua]}
+  - {brand: Philips, category: countertop_dispenser, models: [ADD6910, ADD6920, ADD6922, ADD6970]}
+  - {brand: Hydroflux, category: countertop_dispenser, models: []}
+  - {brand: SK Magic, category: countertop_dispenser, models: []}
+  - {brand: Coway, category: purifier, models: [Neo, Villaem, Aquamega]}
   - {brand: LG, category: purifier, models: [PuriCare]}
-  - {brand: Brita, category: jug_filter, models: [Marella, Maxtra]}
+  - {brand: Aqua Kent, category: purifier, models: []}
+  - {brand: Brio, category: countertop_dispenser, models: []}
+  - {brand: Kestella, category: countertop_dispenser, models: [W3]}
+  # --- substitute category
+  - {brand: Brita, category: jug_filter, models: [Marella, Style, Aluna, Maxtra]}
+  - {brand: PearlCo, category: jug_filter, models: []}
+  - {brand: Waterdrop, category: jug_filter, models: []}
+  - {brand: Xiaomi, category: jug_filter, models: []}
 
-category_terms:
-  countertop_dispenser: [饮水机]
-  purifier: [净水器]
-  jug_filter: [滤水壶]
-
+# Reddit needs API credentials (Sources tab). HardwareZone carries most of
+# the Singapore consumer discussion and needs none.
 reddit:
   enabled: false
-  subreddits: [singapore, askSingapore]
+  subreddits: [singapore, askSingapore, SingaporeRaw, HDB, Cooking, Coffee]
   limit_per_query: 25
   comments: true
 
-# A pasted website: selectors are normally detected automatically when a page
-# is added in the web app. These were verified by hand against XenForo 2 markup.
+# Pasted websites. Selectors are detected automatically when a URL is added in
+# the web app (or `python -m src.cli detect <url>`); HardwareZone's were
+# verified by hand against XenForo 2 markup.
 websites:
   - name: hardwarezone
     enabled: true
+    # robots.txt allows /threads/ and declares Crawl-delay: 10, which the
+    # collector honours automatically. Roughly 20 posts per page.
     urls:
+      - https://forums.hardwarezone.com.sg/threads/tabletop-water-dispenser-for-household.6513008/
       - https://forums.hardwarezone.com.sg/threads/water-dispenser-recommendations.7167782/
-    max_pages: 20
+      - https://forums.hardwarezone.com.sg/threads/water-dispenser.7114006/
+      - https://forums.hardwarezone.com.sg/threads/want-to-buy-a-water-purifier-dispenser-at-home-with-tank.7113176/
+      - https://forums.hardwarezone.com.sg/threads/good-and-affordable-purify-water-dispenser.7100667/
+      - https://forums.hardwarezone.com.sg/threads/anyone-can-recommend-me-hot-and-cold-water-dispenser-for-home.6756862/
+      - https://forums.hardwarezone.com.sg/threads/novita-w12-anyone-using.7095891/
+      - https://forums.hardwarezone.com.sg/threads/what-brand-of-water-filter-do-you-guys-use-at-home.6445925/
+      - https://forums.hardwarezone.com.sg/threads/gvgt-do-water-filters-really-purify-your-water-talking-point-full-episode.6520845/
+    max_pages: 40           # the tabletop thread alone runs past 38 pages
     page_param: page
     selectors:
       post: ".message-inner"

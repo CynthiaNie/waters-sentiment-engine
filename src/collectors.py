@@ -210,6 +210,64 @@ class RedditCollector(BaseCollector):
 
 
 # ------------------------------------------------------------------------ youtube
+class YouTubeStop(RobotsBlocked):
+    """The key cannot be used any more this run: quota, invalid key, API disabled."""
+
+
+class VideoSkipped(RuntimeError):
+    """One video's comments cannot be read (turned off, removed, private)."""
+
+
+# YouTube answers 403 both for "comments are turned off on this video" and for
+# "the quota is used up", so the status code alone cannot tell a skip from a
+# stop. The reason inside the error body can.
+_YT_STOP = {
+    "quotaExceeded": "YouTube daily quota used up. It resets at midnight US Pacific "
+                     "time; comments collected so far are kept.",
+    "dailyLimitExceeded": "YouTube daily quota used up. It resets at midnight US "
+                          "Pacific time; comments collected so far are kept.",
+    "rateLimitExceeded": "YouTube is limiting how fast this key may call it. Try again "
+                         "later; comments collected so far are kept.",
+    "userRateLimitExceeded": "YouTube is limiting how fast this key may call it. Try "
+                             "again later; comments collected so far are kept.",
+    "keyInvalid": "YouTube rejected the API key. Check it in Settings.",
+    "keyExpired": "The YouTube API key has expired. Create a new one in Google Cloud "
+                  "Console.",
+    "accessNotConfigured": "YouTube Data API v3 is not enabled for this key's Google "
+                           "Cloud project. Enable it in Google Cloud Console.",
+    "ipRefererBlocked": "The YouTube API key is restricted to other IP addresses or "
+                        "websites. Loosen the restriction in Google Cloud Console.",
+}
+_YT_SKIP = {
+    "commentsDisabled": "comments are turned off",
+    "videoNotFound": "video removed or private",
+    "forbidden": "comments not accessible",
+}
+
+
+def youtube_error(r, path: str) -> None:
+    """Raise YouTubeStop or VideoSkipped for an error response from the Data API."""
+    try:
+        err = r.json().get("error", {})
+    except ValueError:
+        err = {}
+    reasons = [e.get("reason", "") for e in err.get("errors") or []]
+    reasons += [d.get("reason", "") for d in err.get("details") or []]
+    message = err.get("message", "") or r.text[:200]
+    if "API_KEY_INVALID" in reasons or "API key not valid" in message:
+        reasons.insert(0, "keyInvalid")
+    for reason in reasons:
+        if reason in _YT_STOP:
+            raise YouTubeStop(_YT_STOP[reason])
+    if path == "commentThreads" and r.status_code in (403, 404):
+        reason = next((x for x in reasons if x in _YT_SKIP), "")
+        raise VideoSkipped(_YT_SKIP.get(reason) or f"HTTP {r.status_code} {message}")
+    if r.status_code in (400, 401, 403):
+        raise YouTubeStop(f"YouTube refused the request (HTTP {r.status_code}: "
+                          f"{', '.join(filter(None, reasons)) or message}).")
+    r.raise_for_status()
+
+
 class YouTubeCollector(BaseCollector):
     """Official Data API v3. Requires YOUTUBE_API_KEY."""
     platform = "youtube"
@@ -230,10 +288,8 @@ class YouTubeCollector(BaseCollector):
         self.throttle(self.BASE)
         r = httpx.get(f"{self.BASE}/{path}", params=params,
                       headers={"User-Agent": user_agent()}, timeout=30)
-        if r.status_code == 403:
-            log.error("YouTube quota exceeded or key invalid, stopping")
-            raise RobotsBlocked("YouTube API 403")
-        r.raise_for_status()
+        if r.status_code >= 400:
+            youtube_error(r, path)
         return r.json()
 
     # YouTube wants script variants for Chinese rather than bare "zh".
@@ -243,7 +299,12 @@ class YouTubeCollector(BaseCollector):
     def collect(self, queries: list, max_videos: int = 10,
                 max_comments: int = 100, region: str = "SG",
                 language: str | None = "en") -> Iterator[dict[str, Any]]:
-        """queries: plain strings, or (text, language) pairs from a profile."""
+        """queries: plain strings, or (text, language) pairs from a profile.
+
+        A video whose comments cannot be read is skipped; a problem with the key
+        or quota raises YouTubeStop, because every later call would fail too.
+        """
+        skipped: dict[str, str] = {}
         for entry in queries:
             q, lang = entry if isinstance(entry, (tuple, list)) else (entry, language)
             log.info("youtube [%s/%s] :: %s", region, lang or "-", q)
@@ -253,12 +314,16 @@ class YouTubeCollector(BaseCollector):
                 params["relevanceLanguage"] = self.LANG_ALIASES.get(lang.lower(), lang)
             try:
                 search = self._get("search", params)
+            except YouTubeStop:
+                raise
             except Exception as exc:
                 log.error("youtube search failed %s: %s", q, exc)
                 continue
             for item in search.get("items", []):
                 vid = item["id"]["videoId"]
                 title = item["snippet"]["title"]
+                if vid in skipped:
+                    continue
                 page, fetched = None, 0
                 while fetched < max_comments:
                     params = {"part": "snippet,replies", "videoId": vid,
@@ -268,6 +333,12 @@ class YouTubeCollector(BaseCollector):
                         params["pageToken"] = page
                     try:
                         data = self._get("commentThreads", params)
+                    except VideoSkipped as exc:
+                        skipped[vid] = str(exc)
+                        log.info("skipped video %s (%s): %s", vid, title[:60], exc)
+                        break
+                    except YouTubeStop:
+                        raise
                     except Exception as exc:
                         log.warning("comments unavailable for %s: %s", vid, exc)
                         break
@@ -296,6 +367,10 @@ class YouTubeCollector(BaseCollector):
                     page = data.get("nextPageToken")
                     if not page:
                         break
+        if skipped:
+            from collections import Counter
+            log.info("youtube: %s video(s) skipped: %s", len(skipped), ", ".join(
+                f"{n} {why}" for why, n in Counter(skipped.values()).most_common()))
 
 
 # --------------------------------------------------------------------------- forum
@@ -556,7 +631,7 @@ class ManualImportCollector(BaseCollector):
 # ---------------------------------------------------------------- product matching
 # Letters that count as "inside a word" for brand matching. Deliberately Latin
 # only: \b treats Chinese and Thai characters as word characters too, so
-# r"\b安吉尔\b" never matches inside unspaced text like 我买了安吉尔净水器.
+# r"\b小米\b" never matches inside unspaced text like 我买了小米净水器.
 _WORDCH = "0-9A-Za-z\u00C0-\u024F\u1E00-\u1EFF"
 
 

@@ -1,12 +1,12 @@
-# WATERS taxonomy: the consumer needs a post is coded against.
+# WATERS taxonomy for review classification — ORIGINAL framework (prof-approved).
 #
 # The needs are not equivalent in kind: W/A/T/S are MOTIVATIONS (drive the
 # category decision), E and COST are CONSTRAINTS, and R is a GATE that governs
 # the BRAND decision rather than the category decision.
 #
-# Posts are coded at MENTION level: a post yields 0..n needs, each with its own
-# sentiment. Mention frequency is not comparable with primary-need coding
-# (one need per respondent) as used in interviews or surveys.
+# IMPORTANT: reviews are coded at MENTION level (0..n needs per document).
+# Focus group participants are coded at PRIMARY-NEED level (exactly one).
+# The two datasets are NOT directly comparable and must be reported separately.
 
 codes:
   W:

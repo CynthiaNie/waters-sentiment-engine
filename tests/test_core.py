@@ -248,12 +248,12 @@ def test_profile_round_trip(tmp_path, monkeypatch):
         country.load("../etc")
 
 
-def test_example_profile_loads_with_per_country_paths():
+def test_singapore_profile_uses_per_country_paths_and_keeps_sources():
     sg = country.load("sg")
     p = country.paths(sg)
     assert p["db"].as_posix() == "data/countries/sg/waters.db"
     assert sg["websites"][0]["selectors"]["post"] == ".message-inner"
-    assert ("新加坡 饮水机 推荐", "zh") in country.queries(sg)
+    assert len(country.queries(sg)) == 15
 
 
 def test_translation_is_stored_and_old_databases_migrate(tmp_path):
@@ -276,7 +276,7 @@ def test_translation_is_stored_and_old_databases_migrate(tmp_path):
     assert tuple(row) == ("RO water tastes bad", "ms")
 
 
-# --------------------------------------- providers, translation, spot-check
+# ------------------------------------------------------------- interface and providers
 import ast  # noqa: E402
 import re  # noqa: E402
 
@@ -375,3 +375,133 @@ def test_spot_check_records_and_summarises(con):
     assert db.spot_summary(con) == {"checked": 2, "correct": 2, "pct_correct": 100.0,
                                     "last_checked": db.spot_summary(con)["last_checked"]}
     assert db.spot_sample(con, 20) == [], "checked quotes are not offered again"
+
+
+# ------------------------------------------------------- YouTube error reasons
+def _yt_response(status, reason):
+    import httpx
+    return httpx.Response(status, json={"error": {"code": status, "message": reason,
+                                                  "errors": [{"reason": reason}]}},
+                          request=httpx.Request("GET", "https://www.googleapis.com/x"))
+
+
+def test_youtube_403_is_split_by_reason():
+    with pytest.raises(collectors.VideoSkipped, match="turned off"):
+        collectors.youtube_error(_yt_response(403, "commentsDisabled"), "commentThreads")
+    with pytest.raises(collectors.YouTubeStop, match="quota"):
+        collectors.youtube_error(_yt_response(403, "quotaExceeded"), "commentThreads")
+    with pytest.raises(collectors.YouTubeStop, match="not enabled"):
+        collectors.youtube_error(_yt_response(403, "accessNotConfigured"), "search")
+    with pytest.raises(collectors.YouTubeStop, match="rejected the API key"):
+        collectors.youtube_error(_yt_response(400, "keyInvalid"), "search")
+
+
+def _fake_youtube(monkeypatch, comment_reply):
+    import httpx
+    monkeypatch.setenv("YOUTUBE_API_KEY", "k")
+
+    def fake_get(url, params=None, headers=None, timeout=None):
+        if url.endswith("/search"):
+            items = [{"id": {"videoId": v}, "snippet": {"title": f"video {v}"}}
+                     for v in ("aaaaaaaaaaa", "bbbbbbbbbbb")]
+            return httpx.Response(200, json={"items": items})
+        return comment_reply(params["videoId"])
+    monkeypatch.setattr(httpx, "get", fake_get)
+
+
+def test_video_with_comments_off_is_skipped_and_collection_goes_on(monkeypatch):
+    import httpx
+
+    def reply(vid):
+        if vid == "aaaaaaaaaaa":
+            return _yt_response(403, "commentsDisabled")
+        top = {"textDisplay": "heats fast", "authorDisplayName": "x", "likeCount": 1}
+        return httpx.Response(200, json={"items": [
+            {"snippet": {"topLevelComment": {"snippet": top}}}]})
+    _fake_youtube(monkeypatch, reply)
+    got = list(collectors.YouTubeCollector(delay=0).collect(["q"]))
+    assert [g["raw_text"] for g in got] == ["heats fast"]
+
+
+def test_quota_exhaustion_stops_the_whole_youtube_run(monkeypatch):
+    calls = []
+
+    def reply(vid):
+        calls.append(vid)
+        return _yt_response(403, "quotaExceeded")
+    _fake_youtube(monkeypatch, reply)
+    with pytest.raises(collectors.YouTubeStop):
+        list(collectors.YouTubeCollector(delay=0).collect(["q1", "q2"]))
+    assert calls == ["aaaaaaaaaaa"], "no further calls once the quota is gone"
+
+
+# --------------------------------------------------------------- market check
+from src import scope  # noqa: E402
+
+
+def _video(con, title, comments):
+    sid = db.upsert_source(con, f"youtube:{title}", "youtube")
+    for i, text in enumerate(comments):
+        db.insert_document(con, source_id=sid, raw_text=text, rating=i,
+                           url="https://youtube.com/watch?v=abcdefghijk")
+    return sid
+
+
+def test_only_target_market_is_kept_unless_global_is_allowed():
+    assert scope.keep("target_market")
+    assert not scope.keep("other_market", keep_global=True)
+    assert not scope.keep("global_no_signal")
+    assert scope.keep("global_no_signal", keep_global=True)
+    assert scope.exclusion_note("other_market", "United States", "Singapore") == \
+        "other market: United States"
+
+
+def test_market_check_flags_off_market_videos_and_analysis_ignores_them(
+        tmp_path, monkeypatch):
+    path = tmp_path / "s.db"
+    db.init(path)
+    monkeypatch.setattr(db, "DB_PATH", path)
+    monkeypatch.setenv("LLM_PRESET", "deepseek")
+    monkeypatch.setenv("LLM_API_KEY", "k")
+    monkeypatch.delenv("YOUTUBE_API_KEY", raising=False)  # details skipped
+    with db.connect() as c:
+        sg = _video(c, "HDB water dispenser", ["bought it at Courts for $300"])
+        us = _video(c, "Best pitchers", ["got mine at Walmart"])
+        glob = _video(c, "How RO works", ["interesting"])
+        manual = _video(c, "Hand-excluded", ["whatever"])
+        c.execute("UPDATE sources SET in_scope = 0, exclusion_note = 'by hand' "
+                  "WHERE id = ?", (manual,))
+        for sid in (sg, us):
+            did = c.execute("SELECT id FROM documents WHERE source_id = ?",
+                            (sid,)).fetchone()["id"]
+            db.insert_mentions(c, did, [{"waters_code": "COST", "sentiment": "neutral",
+                                         "evidence_span": "at"}], "m")
+    seen = []
+
+    def fake(system, user, schema, model, max_tokens):
+        assert "Singapore" in system and "SGD" in system
+        ids = [v["id"] for v in __import__("json").loads(user)]
+        seen.extend(ids)
+        verdict = {sg: ("target_market", "Singapore"), us: ("other_market", "United States"),
+                   glob: ("global_no_signal", "")}
+        return {"videos": [{"id": i, "verdict": verdict[i][0], "market": verdict[i][1],
+                            "reason": "signals"} for i in ids]}
+    monkeypatch.setattr(scope.llm, "complete_json", fake)
+    prof = {"name": "Singapore", "currency": "SGD", "youtube": {"keep_global": False}}
+    res = scope.run(prof)
+    assert res == {"checked": 3, "kept": 1, "excluded": 2, "failed": 0}
+    assert manual not in seen, "a person's exclusion is never re-judged"
+    with db.connect() as c:
+        rows = {r["id"]: (r["in_scope"], r["exclusion_note"]) for r in
+                c.execute("SELECT id, in_scope, exclusion_note FROM sources")}
+        assert db.counts(c)["mentions_in_scope"] == 1
+    assert rows[sg] == (1, None)
+    assert rows[us] == (0, "other market: United States")
+    assert rows[glob] == (0, "global, no Singapore signal")
+    assert rows[manual] == (0, "by hand")
+    assert set(analyse._frame()["source_name"]) == {"youtube:HDB water dispenser"}
+    assert scope.run(prof)["checked"] == 0, "judged videos are not asked about again"
+    with db.connect() as c:  # changing the rule needs no model call
+        scope.apply(c, "Singapore", keep_global=True)
+        assert c.execute("SELECT in_scope FROM sources WHERE id = ?",
+                         (glob,)).fetchone()[0] == 1

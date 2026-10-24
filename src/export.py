@@ -9,7 +9,7 @@ import pandas as pd
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
-from . import analyse, db, llm
+from . import analyse, db, llm, scope
 
 OUT_DIR = Path(os.getenv("WATERS_OUT", "outputs"))
 HDR_FILL = PatternFill("solid", fgColor="1F3864")
@@ -22,6 +22,7 @@ def _readme_frame(profile: dict | None = None) -> pd.DataFrame:
     with db.connect() as con:
         c = db.counts(con)
         spot = db.spot_summary(con)
+        checked = scope.summary(con)
         models = [r["m"] for r in con.execute(
             "SELECT DISTINCT model_version m FROM mentions ORDER BY m")]
         srcs = con.execute(
@@ -54,7 +55,7 @@ def _readme_frame(profile: dict | None = None) -> pd.DataFrame:
         ("Documents in scope", in_scope),
         ("Documents excluded", n_excluded),
         ("Documents classified", c["classified_docs"]),
-        ("Mentions coded", c["mentions"]),
+        ("Mentions coded (in scope)", c["mentions_in_scope"]),
         ("Products in watchlist", c["products"]),
         ("Content date range", f"{span['a']} to {span['b']}" if span and span["a"] else "n/a"),
         ("Minimum cell size", analyse.MIN_CELL),
@@ -100,6 +101,22 @@ def _readme_frame(profile: dict | None = None) -> pd.DataFrame:
                            "query string excludes. Any source flagged out of scope is "
                            "listed above with its reason, not deleted."),
     ]
+    if checked["videos"]:
+        rows += [
+            ("", ""),
+            ("MARKET CHECK (YouTube)", ""),
+            ("Videos collected", checked["videos"]),
+            ("Videos excluded", checked["excluded"]),
+            ("Videos not yet checked", checked["unchecked"]),
+            ("Judged by", ", ".join(checked["models"]) or "not run"),
+            ("How", "YouTube search ignores market boundaries. The AI model judged each "
+                    "video from its title, channel, description and a sample of "
+                    f"comments; only videos about {profile['name']}, or whose "
+                    "commenters are from there, are analysed. No person reviewed "
+                    "these verdicts unless judged_by says 'manual'. Every video, "
+                    "kept or not, is listed with its reason on the Market_Check "
+                    "sheet."),
+        ]
     rows += [("", ""), ("QUALITY SPOT-CHECK", "")]
     if spot["checked"]:
         rows += [
@@ -131,6 +148,7 @@ def documents_frame() -> pd.DataFrame:
                    s.platform,
                    s.in_scope,
                    s.exclusion_note,
+                   s.scope_verdict,
                    COALESCE(p.brand, 'Unattributed') AS brand,
                    COALESCE(p.category, 'unknown')   AS category,
                    d.language, d.posted_at, d.rating, d.url, d.author_hash,
@@ -171,6 +189,10 @@ def run(write_csv: bool = True, profile: dict | None = None) -> str:
 
     with pd.ExcelWriter(xlsx, engine="openpyxl") as xw:
         _readme_frame(profile).to_excel(xw, sheet_name="README", index=False)
+        with db.connect() as con:
+            checks = scope.frame(con)
+        if not checks.empty:
+            checks.to_excel(xw, sheet_name="Market_Check", index=False)
         for name, df in frames.items():
             df.to_excel(xw, sheet_name=name[:31], index=False)
         for ws in xw.book.worksheets:
@@ -184,4 +206,6 @@ def run(write_csv: bool = True, profile: dict | None = None) -> str:
         # CSV only: full post text across thousands of rows would bloat the
         # workbook without adding anything analysable to it.
         documents_frame().to_csv(csv_dir / "Raw_Documents.csv", index=False)
+        if not checks.empty:
+            checks.to_csv(csv_dir / "Market_Check.csv", index=False)
     return str(xlsx)

@@ -36,7 +36,8 @@ def _frame() -> pd.DataFrame:
             FROM mentions m
             JOIN documents d ON d.id = m.document_id
             LEFT JOIN products p ON p.id = d.product_id
-            LEFT JOIN sources  s ON s.id = d.source_id
+            JOIN sources  s ON s.id = d.source_id
+            WHERE s.in_scope = 1
         """).fetchall()
     df = pd.DataFrame([dict(r) for r in rows])
     if df.empty:
@@ -107,7 +108,7 @@ def share_of_voice(df: pd.DataFrame) -> dict[str, pd.DataFrame]:
 
 # ---------------------------------------------------- 4. pain concentration score
 def pain_concentration(df: pd.DataFrame) -> pd.DataFrame:
-    """mention frequency x negative share: the review-mining analogue of a
+    """mention frequency x negative share. The review-mining analogue of the
     prevalence x urgency matrix."""
     total = len(df)
     g = df.groupby(["brand", "need"]).agg(

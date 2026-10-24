@@ -6,6 +6,7 @@
     python -m src.cli --country my detect <url>    # read a pasted page, --add to save
     python -m src.cli --country my init
     python -m src.cli --country my collect --source youtube --limit 50
+    python -m src.cli --country my scope           # market check of YouTube videos
     python -m src.cli --country my classify --limit 200
     python -m src.cli --country my export
     python -m src.cli --country my full
@@ -24,7 +25,7 @@ import yaml
 from rich.console import Console
 from rich.table import Table
 
-from . import classify, collectors, country, db, export
+from . import classify, collectors, country, db, export, scope
 
 console = Console()
 log = logging.getLogger("waters")
@@ -161,6 +162,9 @@ def do_collect(profile: dict, source: str, limit: int | None, dry_run: bool) -> 
                     log.info("%s: seen %s, new %s", spec["name"], seen, new)
                 if limit and seen >= limit:
                     break
+        except collectors.YouTubeStop as exc:
+            log.error("youtube stopped: %s", exc)
+            console.print(f"[yellow]Stopped {spec['name']}: {exc}[/yellow]")
         except collectors.RobotsBlocked as exc:
             console.print(f"[yellow]Halted politely: {exc}[/yellow]")
         except Exception as exc:
@@ -168,6 +172,24 @@ def do_collect(profile: dict, source: str, limit: int | None, dry_run: bool) -> 
             console.print(f"[red]Error on {spec['name']}: {exc}[/red]")
         console.print(f"  seen {seen}, new {new}, duplicates {seen - new}")
     show_counts()
+
+
+def do_scope(profile: dict, recheck: bool = False) -> None:
+    """Market check before classification, so off-market videos are never paid
+    for. A failure leaves the videos in the analysis and is retried next time."""
+    try:
+        res = scope.run(profile, recheck=recheck)
+    except Exception as exc:
+        log.error("market check could not run: %s", exc)
+        console.print(f"[red]Market check could not run: {exc}[/red]")
+        return
+    with db.connect() as con:
+        s = scope.summary(con)
+    if res["checked"] or res["failed"]:
+        console.print(f"Market check: {res['checked']} video(s) judged, {res['kept']} "
+                      f"kept, {res['excluded']} excluded, {res['failed']} failed")
+    console.print(f"YouTube videos in scope: {s['videos'] - s['excluded']} of "
+                  f"{s['videos']}")
 
 
 def do_export(profile: dict) -> None:
@@ -200,6 +222,10 @@ def main() -> None:
                    help="all | youtube | reddit | web | api | manual")
     c.add_argument("--limit", type=int)
     c.add_argument("--dry-run", action="store_true")
+
+    sc = sub.add_parser("scope", help="market check of YouTube videos")
+    sc.add_argument("--recheck", action="store_true",
+                    help="judge every video again, not only new ones")
 
     cl = sub.add_parser("classify")
     cl.add_argument("--limit", type=int)
@@ -286,8 +312,13 @@ def main() -> None:
         db.init()
         do_collect(profile, a.source, a.limit, a.dry_run)
 
+    elif a.cmd == "scope":
+        do_scope(profile, a.recheck)
+
     elif a.cmd == "classify":
         db.init()
+        if not a.dry_run:
+            do_scope(profile)
         try:
             res = classify.run(limit=a.limit, dry_run=a.dry_run,
                                country_name=profile["name"])
@@ -307,6 +338,7 @@ def main() -> None:
     elif a.cmd == "full":
         db.init()
         do_collect(profile, "all", None, False)
+        do_scope(profile)
         console.print(classify.run(country_name=profile["name"]))
         do_export(profile)
 

@@ -1,0 +1,131 @@
+code: th
+name: Thailand
+languages:
+- th
+- en
+currency: THB
+youtube:
+  enabled: true
+  region: TH
+  max_videos: 8
+  max_comments: 100
+queries:
+- ตู้กดน้ำร้อนน้ำเย็น ยี่ห้อไหนดี
+- เครื่องกรองน้ำ ยี่ห้อไหนดี pantip
+- รีวิว ตู้กดน้ำ
+- เครื่องกรองน้ำ RO ดีไหม
+- เครื่องกรองน้ำ Coway รีวิว
+- เครื่องกรองน้ำ Mazuma รีวิว
+- เครื่องกรองน้ำ Stiebel Eltron ดีไหม
+- ตู้กดน้ำ Sharp รีวิว
+- ตู้กดน้ำ ตะไคร่ ขึ้นถัง
+- วิธีล้างตู้กดน้ำ เชื้อรา
+- เปลี่ยนไส้กรองน้ำ ราคา
+- น้ำประปา ดื่มได้ไหม
+- น้ำจากเครื่องกรอง มีกลิ่นพลาสติก
+- น้ำร้อนชงนมลูก ตู้กดน้ำ
+- เหยือกกรองน้ำ ดีไหม
+- เหยือกกรองน้ำ Brita รีวิว
+- ตู้กดน้ำ กับ เครื่องกรองน้ำ แบบไหนดี
+- text: water filter Bangkok tap water
+  lang: en
+- text: best water dispenser Thailand
+  lang: en
+products:
+- brand: Coway
+  category: purifier
+  models: []
+  aliases:
+  - โคเวย์
+- brand: Mazuma
+  category: purifier
+  models: []
+  aliases:
+  - มาซูม่า
+- brand: Stiebel Eltron
+  category: purifier
+  models: []
+  aliases:
+  - สตีเบล เอลทรอน
+  - Stiebel
+- brand: Pure
+  category: purifier
+  models: []
+  aliases:
+  - เพียว
+- brand: SafetyDrink
+  category: purifier
+  models: []
+  aliases:
+  - เซฟตี้ดริ้งค์
+  - Safety Drink
+- brand: Unipure
+  category: purifier
+  models: []
+  aliases:
+  - ยูนิเพียว
+- brand: Sharp
+  category: countertop_dispenser
+  models: []
+  aliases:
+  - ชาร์ป
+- brand: Toshiba
+  category: countertop_dispenser
+  models: []
+  aliases:
+  - โตชิบา
+- brand: Electrolux
+  category: countertop_dispenser
+  models: []
+  aliases:
+  - อีเลคโทรลักซ์
+- brand: Midea
+  category: countertop_dispenser
+  models: []
+  aliases:
+  - ไมเดีย
+- brand: Brita
+  category: jug_filter
+  models:
+  - Marella
+  aliases:
+  - บริต้า
+- brand: Philips
+  category: jug_filter
+  models: []
+  aliases:
+  - ฟิลิปส์
+category_terms:
+  countertop_dispenser:
+  - ตู้กดน้ำ
+  - ตู้กดน้ำร้อนน้ำเย็น
+  - ตู้น้ำร้อนน้ำเย็น
+  - เครื่องกดน้ำ
+  - ตู้กดน้ำร้อน
+  - ตู้กดน้ำเย็น
+  purifier:
+  - เครื่องกรองน้ำ
+  - เครื่องกรองน้ำดื่ม
+  - เครื่องกรองน้ำ RO
+  - ไส้กรอง
+  - กรองน้ำ
+  jug_filter:
+  - เหยือกกรองน้ำ
+  - เหยือกกรอง
+  - ไส้กรองเหยือก
+reddit:
+  enabled: false
+  subreddits:
+  - Thailand
+  - Bangkok
+  limit_per_query: 25
+  comments: true
+notes: 'AI-drafted; review brands and queries before collecting.
+
+  Confirm Philips
+  and Unipure actually sell filter jugs there; I was not confident enough to list models for most brands.
+  The Coway market is largely rental/subscription-based, so cost complaints may concern monthly fees rather
+  than filter prices. Pantip will likely be the richest source; the English sites mainly reflect expat
+  views.
+
+  Sites worth pasting threads from: Pantip, ASEAN NOW (formerly Thaivisa) forum, Sanook, Kapook.'

@@ -20,7 +20,7 @@ import pycountry
 import streamlit as st
 from dotenv import set_key
 
-from src import analyse, autodetect, classify, country, db, jobs, llm
+from src import analyse, autodetect, classify, country, db, jobs, llm, scope
 from src.i18n import CODE_NAMES_ZH, CODE_DEFS_ZH, SENTIMENT_ZH, ZH
 
 st.set_page_config(page_title="WATERS Sentiment Engine", page_icon="💧", layout="wide")
@@ -234,7 +234,7 @@ with st.sidebar:
     if counts:
         c1, c2 = st.columns(2)
         c1.metric(t("Documents"), f"{counts['documents']:,}")
-        c2.metric(t("Mentions"), f"{counts['mentions']:,}")
+        c2.metric(t("Mentions"), f"{counts['mentions_in_scope']:,}")
         st.caption(t("{n} documents waiting to be classified",
                      n=f"{counts['unclassified']:,}"))
     else:
@@ -354,9 +354,22 @@ with tab_sources:
                        key=f"{code}_yt_c")
     st.caption(t("{q} queries × {v} videos. Each search uses 100 of the key's 10,000 "
                  "free daily quota units.", q=len(country.queries(prof)), v=yt_vid))
+    st.caption(t("YouTube search also returns videos made for other countries. Before "
+                 "classifying, the AI checks each video and leaves out those that are "
+                 "not about {name} or whose commenters are elsewhere. Nothing is "
+                 "deleted: the workbook lists every video with the reason.", name=cname))
+    yt_glob = st.toggle(t("Also keep videos with no sign of any one country"),
+                        bool(prof["youtube"].get("keep_global", False)),
+                        key=f"{code}_yt_glob",
+                        help=t("For example general science explainers with comments "
+                               "from everywhere. Off by default: they say little about "
+                               "this market."))
     if st.button(t("Save YouTube settings"), key=f"{code}_yt_save"):
         prof["youtube"].update(enabled=yt_on, max_videos=int(yt_vid),
-                               max_comments=int(yt_com))
+                               max_comments=int(yt_com), keep_global=bool(yt_glob))
+        if country.paths(prof)["db"].exists():
+            with db.connect() as con:  # stored verdicts, so no AI call is needed
+                scope.apply(con, prof["name"], bool(yt_glob))
         save(prof, "YouTube settings saved.")
 
     st.divider()
@@ -598,6 +611,9 @@ with tab_run:
     if counts:
         st.caption(t("{n} documents are waiting for classification (about 20 per AI "
                      "call).", n=f"{counts['unclassified']:,}"))
+    st.caption(t("Classify first runs the market check on new YouTube videos, so "
+                 "videos made for other countries are left out before any are "
+                 "classified."))
 
     b1, b2, b3, b4 = st.columns(4)
     actions = [
@@ -638,14 +654,14 @@ with tab_run:
 
 # ==================================================================== results
 with tab_results:
-    if not counts or not counts["mentions"]:
+    if not counts or not counts["mentions_in_scope"]:
         st.info(t("No classified mentions yet. Collect and classify on the Run tab."))
     else:
         df = analyse._frame()
         c1, c2, c3, c4 = st.columns(4)
         c1.metric(t("Documents"), f"{counts['documents']:,}")
         c2.metric(t("Classified"), f"{counts['classified_docs']:,}")
-        c3.metric(t("Mentions"), f"{counts['mentions']:,}")
+        c3.metric(t("Mentions"), f"{counts['mentions_in_scope']:,}")
         spot = counts["spot"]
         c4.metric(t("Spot-check"), f"{spot['pct_correct']}%" if spot["checked"]
                   else t("not done"),
@@ -670,6 +686,22 @@ with tab_results:
 
         st.markdown(f"**{t('Evidence (verbatim quote, with English translation)')}**")
         st.dataframe(analyse.evidence_appendix(df).head(200), hide_index=True)
+
+        with db.connect() as con:
+            checked, checks = scope.summary(con), scope.frame(con)
+        if checked["videos"]:
+            with st.expander(t("Market check: {kept} of {n} YouTube videos kept",
+                               kept=checked["videos"] - checked["excluded"],
+                               n=checked["videos"])):
+                st.caption(t("Judged by the AI from each video's title, channel and "
+                             "comments. Comments from excluded videos are not analysed "
+                             "but stay in the database."))
+                if checked["unchecked"]:
+                    st.warning(t("{n} video(s) not checked yet; they are still counted. "
+                                 "Run Classify to check them.", n=checked["unchecked"]))
+                st.dataframe(checks[["video", "in_scope", "verdict", "exclusion_note",
+                                     "reason", "comments", "url"]], hide_index=True,
+                             column_config={"url": st.column_config.LinkColumn("url")})
 
         # ------------------------------------------------------- spot check
         st.divider()
@@ -772,8 +804,8 @@ with tab_settings:
     st.divider()
     # ------------------------------------------------------------ ai provider
     st.subheader(t("AI provider"))
-    st.caption(t("Used to classify posts and to set up countries, websites and APIs. "
-                 "Claude is the default; Chinese providers can be used instead."))
+    st.caption(t("Used to classify posts and to set up countries, websites and APIs. Any "
+                 "listed provider works; pick one your organisation is allowed to use."))
     presets = list(llm.PROVIDERS)
     preset = st.selectbox(t("Provider"), presets, index=presets.index(llm.preset())
                           if llm.preset() in presets else 0,
@@ -808,8 +840,8 @@ with tab_settings:
                               index=help_opts.index(cur_help), accept_new_options=True,
                               key=f"set_help_{preset}",
                               help=t("Reads websites, maps APIs and drafts countries. "
-                                     "Automatic: claude-opus-5-5 on Claude, otherwise "
-                                     "the classification model."))
+                                     "Automatic: the provider's recommended setup model, "
+                                     "or the classification model if it has none."))
     if not same:
         st.warning(t("Changing provider or model: results are no longer comparable with "
                      "earlier runs. Do a new spot-check after classifying."))
