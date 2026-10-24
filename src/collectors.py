@@ -380,7 +380,7 @@ def parse_posts(html: str, selectors: dict[str, str]) -> list[dict[str, Any]]:
     Shared by the collector and by selector auto-detection, so a detected
     configuration is previewed with exactly the code that will collect with it.
     """
-    from selectolax.parser import HTMLParser
+    from selectolax.lexbor import LexborHTMLParser as HTMLParser
     tree = HTMLParser(html)
     strip_sel = selectors.get("strip")
     out = []
@@ -415,7 +415,7 @@ def parse_posts(html: str, selectors: dict[str, str]) -> list[dict[str, Any]]:
 
 
 def next_page_url(html: str, next_selector: str, current: str) -> str | None:
-    from selectolax.parser import HTMLParser
+    from selectolax.lexbor import LexborHTMLParser as HTMLParser
     el = HTMLParser(html).css_first(next_selector)
     href = el.attributes.get("href") if el is not None else None
     return urljoin(current, href) if href else None
@@ -611,7 +611,7 @@ class ManualImportCollector(BaseCollector):
                     }
             return
         if p.is_dir() and selectors:
-            from selectolax.parser import HTMLParser
+            from selectolax.lexbor import LexborHTMLParser as HTMLParser
             for f in sorted(p.glob("*.html")):
                 tree = HTMLParser(f.read_text(encoding="utf-8", errors="replace"))
                 for node in tree.css(selectors["post"]):

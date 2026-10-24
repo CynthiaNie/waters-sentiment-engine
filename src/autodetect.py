@@ -68,7 +68,7 @@ def skeleton(html: str, max_chars: int = 60000, per_sig: int = 4) -> str:
     at a fraction of the tokens. Collapsing after `per_sig` identical siblings
     keeps a 40-post thread as small as a 4-post one.
     """
-    from selectolax.parser import HTMLParser
+    from selectolax.lexbor import LexborHTMLParser as HTMLParser
     tree = HTMLParser(html)
     for n in tree.css(_DROP):
         n.decompose()

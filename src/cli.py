@@ -343,7 +343,7 @@ def main() -> None:
         do_export(profile)
 
     elif a.cmd == "inspect":
-        from selectolax.parser import HTMLParser
+        from selectolax.lexbor import LexborHTMLParser as HTMLParser
         col = collectors.BaseCollector()
         html = col.fetch(a.url)
         tree = HTMLParser(html)
