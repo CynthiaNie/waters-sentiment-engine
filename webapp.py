@@ -249,8 +249,11 @@ with st.sidebar:
                       (has("AUTHOR_SALT"), t("Author salt"))):
         st.caption(f"{'✅' if ok else '⚠️'} {label}")
 
+# Always present, so the tabs below keep their position and the open tab survives
+# the rerun after a save (a new element above them resets them to the first tab).
+flash = st.empty()
 if "_flash" in st.session_state:
-    st.success(st.session_state.pop("_flash"))
+    flash.success(st.session_state.pop("_flash"))
 
 st.header(cname)
 if prof.get("notes"):
