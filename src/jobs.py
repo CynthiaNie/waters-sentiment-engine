@@ -48,6 +48,13 @@ def stop(code: str) -> None:
         job["proc"].terminate()
 
 
+def forget(code: str) -> None:
+    """Drop a finished job, so a country created again under the same code
+    does not show the old run."""
+    if not running(code):
+        _JOBS.pop(code, None)
+
+
 def status(code: str) -> dict[str, Any] | None:
     job = _JOBS.get(code)
     if not job:

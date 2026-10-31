@@ -394,6 +394,24 @@ with tab_setup:
                                                when=version_label(pick).split(" · ")[0])
                 st.rerun()
 
+    with st.expander(t("Delete this country")):
+        st.caption(t("Moves the settings, earlier versions, database, results and log of "
+                     "{name} to the backups folder. Nothing is erased: move the files "
+                     "back to undo.", name=cname))
+        if len(codes) == 1:
+            st.caption(t("The last country cannot be deleted."))
+        elif jobs.running(code):
+            st.caption(t("Stop the running job first."))
+        sure = st.checkbox(t("Yes, delete {name}", name=cname), key=f"{code}_del_sure")
+        if st.button(t("Delete country"), key=f"{code}_delete",
+                     disabled=not sure or len(codes) == 1 or jobs.running(code)):
+            dest = country.delete(prof, extra=[jobs.log_path(code)])
+            jobs.forget(code)
+            st.session_state["_switch_to"] = next(c for c in codes if c != code)
+            st.session_state["_flash"] = t("Deleted {name}. Its files are in {dir}.",
+                                           name=cname, dir=dest.as_posix())
+            st.rerun()
+
 # ==================================================================== sources
 with tab_sources:
     # ---------------------------------------------------------------- youtube

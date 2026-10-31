@@ -267,6 +267,30 @@ def test_every_save_keeps_the_previous_version(tmp_path, monkeypatch):
     assert len(country.load("my")["queries"]) == 2
 
 
+def test_delete_moves_only_what_the_country_owns(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(country, "COUNTRY_DIR", Path("config/countries"))
+    my = {"code": "my", "name": "Malaysia"}
+    country.save(my)
+    country.save({**my, "queries": ["q"]})  # leaves one earlier version
+    for f in ("data/countries/my/waters.db", "outputs/my/book.xlsx", "logs/job_my.log",
+              "data/shared.db", "data/shared.db-wal", "outputs/keep.xlsx"):
+        Path(f).parent.mkdir(parents=True, exist_ok=True)
+        Path(f).write_text("x")
+    dest = country.delete(my, extra=[Path("logs/job_my.log")])
+    assert sorted(x.relative_to(dest).as_posix() for x in dest.rglob("*") if x.is_file()) == \
+        ["data/waters.db", "history/" + next((dest / "history").iterdir()).name,
+         "job_my.log", "my.yaml", "outputs/book.xlsx"]
+    assert [c["code"] for c in country.list_countries()] == []
+    # A `paths` override into shared folders: only the database files move.
+    sg = {"code": "sg", "name": "Singapore",
+          "paths": {"db": "data/shared.db", "outputs": "outputs"}}
+    country.save(sg)
+    dest = country.delete(sg)
+    assert (dest / "data/shared.db").exists() and (dest / "data/shared.db-wal").exists()
+    assert Path("outputs/keep.xlsx").exists(), "a shared folder is never moved"
+
+
 def test_singapore_profile_uses_per_country_paths_and_keeps_sources():
     sg = country.load("sg")
     p = country.paths(sg)
