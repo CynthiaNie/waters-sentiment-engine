@@ -51,6 +51,14 @@ ZH: dict[str, str] = {
     "Version": "版本",
     "Restore this version": "恢复此版本",
     "Delete this country": "删除此国家",
+    "Clear saved key": "清除已保存的密钥",
+    "Key cleared.": "密钥已清除。",
+    "Clear Reddit credentials": "清除 Reddit 凭证",
+    "Delete author salt": "删除作者加密盐",
+    "Only for a fresh start. Authors stored so far keep their old pseudonyms, and new posts by the same people will not link to them. Collection stops until a new salt is generated.":
+        "仅用于从头开始。已存的作者保留旧的匿名代号，同一个人之后的新帖子将无法与之关联。重新生成加密盐之前无法采集。",
+    "I understand, delete the salt": "我了解后果，删除加密盐",
+    "Author salt deleted.": "作者加密盐已删除。",
     "Moves the settings, earlier versions, database, results and log of {name} to the backups folder. Nothing is erased: move the files back to undo.":
         "把{name}的设置、历史版本、数据库、结果和日志移到 backups 文件夹。不会真正删除：把文件移回原处即可恢复。",
     "The last country cannot be deleted.": "不能删除最后一个国家。",

@@ -21,7 +21,7 @@ import pandas as pd
 import pycountry
 import streamlit as st
 import yaml
-from dotenv import set_key
+from dotenv import set_key, unset_key
 
 from src import analyse, autodetect, classify, country, db, jobs, llm, scope
 from src.i18n import CODE_NAMES_ZH, CODE_DEFS_ZH, SENTIMENT_ZH, ZH
@@ -47,6 +47,19 @@ def env_set(key: str, value: str) -> None:
     ENV_PATH.touch(exist_ok=True)
     set_key(str(ENV_PATH), key, value, quote_mode="never")
     os.environ[key] = value
+
+
+def env_clear(keys: list[str], widgets: list[str], msg: str) -> None:
+    """Remove saved values from .env and this process. The fields that set them
+    are emptied too, or autosave would write the typed value straight back."""
+    for k in keys:
+        if ENV_PATH.exists():
+            unset_key(str(ENV_PATH), k, quote_mode="never")
+        os.environ.pop(k, None)
+    for w in widgets:
+        st.session_state.pop(w, None)
+    st.session_state["_toast"] = t(msg)
+    st.rerun()
 
 
 if "ui_lang" not in st.session_state:
@@ -601,6 +614,9 @@ with tab_sources:
             save(prof)
         if c3.button(t("Remove"), key=f"{code}_api_rm_{a['name']}"):
             prof["custom_apis"] = [x for x in prof["custom_apis"] if x is not a]
+            if a.get("key_env") and ENV_PATH.exists():
+                unset_key(str(ENV_PATH), a["key_env"], quote_mode="never")
+                os.environ.pop(a["key_env"], None)
             save(prof, "API removed.")
 
     with st.expander(t("Reddit (official API)")):
@@ -622,6 +638,10 @@ with tab_sources:
         want = {k: v.strip() for k, v in (("REDDIT_CLIENT_ID", rid),
                                           ("REDDIT_CLIENT_SECRET", rsec)) if v.strip()}
         env_autosave(want, {k: os.getenv(k, "") for k in want}, "Reddit settings saved.")
+        if ((has("REDDIT_CLIENT_ID") or has("REDDIT_CLIENT_SECRET"))
+                and st.button(t("Clear Reddit credentials"), key=f"{code}_rd_clear")):
+            env_clear(["REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET"],
+                      [f"{c}_rd_{w}" for c in codes for w in ("id", "sec")], "Key cleared.")
         new = deepcopy(prof)
         new["reddit"].update(enabled=rd_on, subreddits=[x.strip().removeprefix("r/")
                                                         for x in subs if x.strip()])
@@ -904,6 +924,8 @@ with tab_settings:
     key_name = "ANTHROPIC_API_KEY" if spec["kind"] == "anthropic" else "LLM_API_KEY"
     key_val = st.text_input(t("API key"), type="password", key=f"set_key_{preset}",
                             placeholder=t("set (hidden)") if same and has(key_name) else "")
+    if same and has(key_name) and st.button(t("Clear saved key"), key="set_key_clear"):
+        env_clear([key_name], [f"set_key_{p}" for p in presets], "Key cleared.")
     c1, c2 = st.columns(2)
     cur_cls = (os.getenv("CLASSIFY_MODEL") if same else "") or (spec["models"] or [""])[0]
     cls_opts = with_current(list(spec["models"]), cur_cls)
@@ -959,7 +981,10 @@ with tab_settings:
     if yt_key.strip():  # a blank key field keeps the stored key
         env_autosave({"YOUTUBE_API_KEY": yt_key.strip()},
                      {"YOUTUBE_API_KEY": os.getenv("YOUTUBE_API_KEY", "")}, "Saved.")
-    if st.button(t("Test YouTube"), key="set_yt_test", disabled=not has("YOUTUBE_API_KEY")):
+    c1, c2 = st.columns(2)
+    if has("YOUTUBE_API_KEY") and c2.button(t("Clear saved key"), key="set_yt_clear"):
+        env_clear(["YOUTUBE_API_KEY"], ["set_yt"], "Key cleared.")
+    if c1.button(t("Test YouTube"), key="set_yt_test", disabled=not has("YOUTUBE_API_KEY")):
         import httpx
         try:
             r = httpx.get("https://www.googleapis.com/youtube/v3/i18nRegions",
@@ -979,6 +1004,13 @@ with tab_settings:
     if has("AUTHOR_SALT"):
         st.caption(t("✅ Set. Never change it: author pseudonyms would no longer link "
                      "across runs."))
+        with st.expander(t("Delete author salt")):
+            st.caption(t("Only for a fresh start. Authors stored so far keep their old "
+                         "pseudonyms, and new posts by the same people will not link to "
+                         "them. Collection stops until a new salt is generated."))
+            sure = st.checkbox(t("I understand, delete the salt"), key="set_salt_sure")
+            if st.button(t("Delete author salt"), key="set_salt_del", disabled=not sure):
+                env_clear(["AUTHOR_SALT"], ["set_salt_sure"], "Author salt deleted.")
     else:
         st.caption(t("Usernames are scrambled with this secret before they are stored."))
         if st.button(t("Generate author salt")):
