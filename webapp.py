@@ -697,6 +697,12 @@ with tab_run:
                 st.code(tail, language=None)
             return
         if s["running"]:
+            st.session_state[f"_watching_{code}"] = True
+        elif st.session_state.pop(f"_watching_{code}", False):
+            # The fragment only redraws itself. When the run ends, redraw the whole
+            # page so the sidebar counts, Results and the run buttons are current.
+            st.rerun(scope="app")
+        if s["running"]:
             st.info(t("⏳ {job} running for {s} s…", job=t(s["label"]),
                       s=int(s["elapsed"])))
             if st.button(t("Stop"), key=f"{code}_stop"):
