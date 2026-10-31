@@ -205,6 +205,17 @@ def profile_label(c: str) -> str:
     return f"{name} ({c})"
 
 
+# Switching the interface language relabels select boxes, and Streamlit then treats
+# them as new widgets and forgets their value. Keep the choices that are stored
+# nowhere else and give them back.
+_sticky = st.session_state.setdefault("_sticky", {})
+for k in ["country"] + [f"{c}_{w}" for c in codes
+                        for w in ("run_lim", "run_clim", "clear_what")]:
+    if k in st.session_state:
+        _sticky[k] = st.session_state[k]
+    elif k in _sticky:
+        st.session_state[k] = _sticky[k]
+
 if "_switch_to" in st.session_state:
     st.session_state["country"] = st.session_state.pop("_switch_to")
 if st.session_state.get("country") not in codes:
