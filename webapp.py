@@ -210,6 +210,9 @@ def profile_label(c: str) -> str:
 # them as new widgets and forgets their value. Keep the choices that are stored
 # nowhere else and give them back.
 _sticky = st.session_state.setdefault("_sticky", {})
+# A reload starts a new session; the country and section are kept in the URL.
+if "country" not in st.session_state and st.query_params.get("country") in codes:
+    st.session_state["country"] = st.query_params["country"]
 for k in ["country"] + [f"{c}_{w}" for c in codes
                         for w in ("run_lim", "run_clim", "clear_what")] + ["section"]:
     if k in st.session_state:
@@ -310,7 +313,10 @@ if any(_notes.values()):
 # browser, so it reset to the first one whenever the language changed.
 SECTIONS = {"setup": "1 · Country setup", "sources": "2 · Sources", "run": "3 · Run",
             "results": "4 · Results", "settings": "⚙ Settings"}
-st.session_state.setdefault("section", "setup")
+if "section" not in st.session_state:
+    st.session_state["section"] = (st.query_params.get("section")
+                                   if st.query_params.get("section") in SECTIONS
+                                   else "setup")
 
 
 def _keep_section() -> None:
@@ -323,6 +329,7 @@ section = st.segmented_control(t("Section"), list(SECTIONS), key="section",
                                format_func=lambda s: t(SECTIONS[s]),
                                on_change=_keep_section, label_visibility="collapsed")
 st.session_state["_last_section"] = section
+st.query_params["country"], st.query_params["section"] = code, section
 
 
 @st.fragment(run_every="2s")
