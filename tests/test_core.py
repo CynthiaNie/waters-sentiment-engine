@@ -509,8 +509,12 @@ def test_market_check_flags_off_market_videos_and_analysis_ignores_them(
         seen.extend(ids)
         verdict = {sg: ("target_market", "Singapore"), us: ("other_market", "United States"),
                    glob: ("global_no_signal", "")}
-        return {"videos": [{"id": i, "verdict": verdict[i][0], "market": verdict[i][1],
-                            "reason": "signals"} for i in ids]}
+        out = [{"id": i, "verdict": verdict[i][0], "market": verdict[i][1],
+                "reason": "signals"} for i in ids]
+        for r in out:  # json_object mode: fields may be missing
+            if r["id"] == glob:
+                del r["market"], r["reason"]
+        return {"videos": out}
     monkeypatch.setattr(scope.llm, "complete_json", fake)
     prof = {"name": "Singapore", "currency": "SGD", "youtube": {"keep_global": False}}
     res = scope.run(prof)

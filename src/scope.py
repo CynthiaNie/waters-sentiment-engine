@@ -195,8 +195,15 @@ def judge(videos: list[dict[str, Any]], country_name: str, currency: str) -> dic
     data = llm.complete_json(system, json.dumps(payload, ensure_ascii=False), SCHEMA,
                              model=llm.helper_model(), max_tokens=4000)
     wanted = {v["id"] for v in videos}
-    return {r["id"]: r for r in data.get("videos", [])
-            if r.get("id") in wanted and r.get("verdict") in VERDICTS}
+    out = {}
+    for r in data.get("videos", []):
+        if r.get("id") in wanted and r.get("verdict") in VERDICTS:
+            # json_object mode (DeepSeek and others) does not enforce the schema,
+            # and models often drop the market field when it would be empty.
+            r["market"] = str(r.get("market") or "")
+            r["reason"] = str(r.get("reason") or "")
+            out[r["id"]] = r
+    return out
 
 
 def apply(con, country_name: str, keep_global: bool = False) -> None:
