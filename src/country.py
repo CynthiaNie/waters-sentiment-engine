@@ -141,20 +141,37 @@ def delete(profile: dict[str, Any], extra: list[Path] = ()) -> Path:
     """Remove a country from the app by moving everything it owns to
     backups/<code>_<time>/, so a deletion can be undone by moving it back."""
     code = profile["code"]
-    dest = Path("backups") / f"{code}_{datetime.now():%Y%m%d-%H%M%S}"
-    p = paths(profile)
     owned = {_path(code): _path(code).name, _history_dir(code): "history",
-             **{x: x.name for x in extra}}
-    # A folder is moved whole only when it is this country's own; a `paths`
-    # override may point at a shared folder, and then only the database goes.
+             **{x: x.name for x in extra}, **_data(profile, whole_folder=True)}
+    return _move(owned, Path("backups") / f"{code}_{datetime.now():%Y%m%d-%H%M%S}")
+
+
+def clear_data(profile: dict[str, Any]) -> Path:
+    """Move a country's database and results to backups/, keeping its settings
+    and hand-collected CSV, so the next run starts from nothing."""
+    return _move(_data(profile), Path("backups") /
+                 f"{profile['code']}_data_{datetime.now():%Y%m%d-%H%M%S}")
+
+
+def _data(profile: dict[str, Any], whole_folder: bool = False) -> dict[Path, str]:
+    """The database and results a country owns, with their names in a backup.
+    whole_folder also takes the rest of the database folder (the hand-collected
+    CSV). A folder is moved whole only when it is this country's own; a `paths`
+    override may point at a shared folder, and then only the database goes."""
+    code, p = profile["code"], paths(profile)
+    owned = {}
     db_file = p["db"]
-    if db_file.parent.name == code:
+    if whole_folder and db_file.parent.name == code:
         owned[db_file.parent] = "data"
     else:
         for s in ("", "-wal", "-shm"):
             owned[db_file.with_name(db_file.name + s)] = f"data/{db_file.name}{s}"
     if p["outputs"].name == code:
         owned[p["outputs"]] = "outputs"
+    return owned
+
+
+def _move(owned: dict[Path, str], dest: Path) -> Path:
     for src, name in owned.items():
         if src.exists():
             (dest / name).parent.mkdir(parents=True, exist_ok=True)

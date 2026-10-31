@@ -291,6 +291,40 @@ def test_delete_moves_only_what_the_country_owns(tmp_path, monkeypatch):
     assert Path("outputs/keep.xlsx").exists(), "a shared folder is never moved"
 
 
+def test_clear_classification_keeps_posts_and_a_copy(con, tmp_path):
+    sid = db.upsert_source(con, "s", "youtube")
+    con.execute("UPDATE sources SET scope_verdict = 'target_market' WHERE id = ?", (sid,))
+    did = db.insert_document(con, source_id=sid, raw_text="tank grows mould")
+    db.insert_mentions(con, did, [{"waters_code": "R", "sentiment": "negative",
+                                   "evidence_span": "tank grows mould"}], "m")
+    db.mark_classified(con, did, "m", 1)
+    con.commit()
+    db.copy_to(tmp_path / "copy" / "waters.db", tmp_path / "t.db")
+    db.clear_classification(con)
+    c = db.counts(con)
+    assert (c["documents"], c["mentions"], c["classified_docs"]) == (1, 0, 0)
+    assert len(db.unclassified(con)) == 1, "the post is queued for classifying again"
+    assert con.execute("SELECT scope_verdict FROM sources").fetchone()[0] == "target_market"
+    with db.connect(tmp_path / "copy" / "waters.db") as old:
+        assert db.counts(old)["mentions"] == 1
+
+
+def test_clear_data_keeps_settings_and_hand_collected_csv(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(country, "COUNTRY_DIR", Path("config/countries"))
+    my = {"code": "my", "name": "Malaysia"}
+    country.save(my)
+    for f in ("data/countries/my/waters.db", "data/countries/my/waters.db-wal",
+              "data/countries/my/manual/reviews.csv", "outputs/my/book.xlsx"):
+        Path(f).parent.mkdir(parents=True, exist_ok=True)
+        Path(f).write_text("x")
+    dest = country.clear_data(my)
+    assert sorted(x.relative_to(dest).as_posix() for x in dest.rglob("*") if x.is_file()) == \
+        ["data/waters.db", "data/waters.db-wal", "outputs/book.xlsx"]
+    assert Path("data/countries/my/manual/reviews.csv").exists()
+    assert [c["code"] for c in country.list_countries()] == ["my"]
+
+
 def test_singapore_profile_uses_per_country_paths_and_keeps_sources():
     sg = country.load("sg")
     p = country.paths(sg)

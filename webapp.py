@@ -755,6 +755,39 @@ with tab_run:
 
     job_panel()
 
+    with st.expander(t("Clear data")):
+        if not counts:
+            st.caption(t("No data collected for {name} yet.", name=cname))
+        else:
+            labels = {
+                "classification": t("Only the AI classification ({m} mentions). Collected "
+                                    "posts stay; {d} documents will need classifying "
+                                    "again, which uses the AI again.",
+                                    m=f"{counts['mentions']:,}",
+                                    d=f"{counts['classified_docs']:,}"),
+                "all": t("All collected posts and results for {name}. Settings, search "
+                         "terms and brands stay.", name=cname)}
+            what = st.radio(t("What to clear"), list(labels), format_func=labels.get,
+                            key=f"{code}_clear_what")
+            st.caption(t("A copy goes to the backups folder first, so this can be undone."))
+            if busy:
+                st.caption(t("Stop the running job first."))
+            sure = st.checkbox(t("Yes, clear it"), key=f"{code}_clear_sure")
+            if st.button(t("Clear data"), key=f"{code}_clear", disabled=not sure or busy):
+                stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+                if what == "classification":
+                    dest = Path("backups") / f"{code}_classification_{stamp}"
+                    db.copy_to(dest / country.paths(prof)["db"].name)
+                    with db.connect() as con:
+                        db.clear_classification(con)
+                    msg = "Cleared the AI classification. A copy of the database is in {dir}."
+                else:
+                    dest = country.clear_data(prof)
+                    msg = "Cleared all data for {name}. The files are in {dir}."
+                st.session_state.pop(f"{code}_clear_sure", None)
+                st.session_state["_flash"] = t(msg, name=cname, dir=dest.as_posix())
+                st.rerun()
+
 # ==================================================================== results
 with tab_results:
     if not counts or not counts["mentions_in_scope"]:

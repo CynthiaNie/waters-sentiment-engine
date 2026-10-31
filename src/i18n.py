@@ -52,6 +52,16 @@ ZH: dict[str, str] = {
     "Restore this version": "恢复此版本",
     "Delete this country": "删除此国家",
     "Clear saved key": "清除已保存的密钥",
+    "Clear data": "清除数据",
+    "What to clear": "清除范围",
+    "Only the AI classification ({m} mentions). Collected posts stay; {d} documents will need classifying again, which uses the AI again.":
+        "只清除 AI 分类结果（{m} 条提及）。已采集的帖子保留；{d} 条文档需要重新分类，会再次调用 AI。",
+    "All collected posts and results for {name}. Settings, search terms and brands stay.":
+        "{name}的全部已采集帖子和结果。设置、搜索词和品牌保留。",
+    "A copy goes to the backups folder first, so this can be undone.": "清除前会先备份到 backups 文件夹，可以恢复。",
+    "Yes, clear it": "确认清除",
+    "Cleared the AI classification. A copy of the database is in {dir}.": "已清除 AI 分类结果，数据库副本在 {dir}。",
+    "Cleared all data for {name}. The files are in {dir}.": "已清除{name}的全部数据，文件已移到 {dir}。",
     "Key cleared.": "密钥已清除。",
     "Clear Reddit credentials": "清除 Reddit 凭证",
     "Delete author salt": "删除作者加密盐",

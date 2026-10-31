@@ -298,3 +298,21 @@ def spot_summary(con: sqlite3.Connection) -> dict[str, Any]:
     return {"checked": n, "correct": ok,
             "pct_correct": round(100 * ok / n, 1) if n else None,
             "last_checked": r["last"]}
+
+
+def clear_classification(con: sqlite3.Connection) -> None:
+    """Forget every AI result so the documents are classified again. Collected
+    posts and the market check verdicts stay."""
+    for table in ("spot_checks", "mentions", "classified_docs"):
+        con.execute(f"DELETE FROM {table}")
+
+
+def copy_to(dest: Path, path: Path | None = None) -> None:
+    """A consistent copy of the database, including writes still in the WAL."""
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    src, out = sqlite3.connect(Path(path or DB_PATH)), sqlite3.connect(dest)
+    try:
+        src.backup(out)
+    finally:
+        src.close()
+        out.close()
