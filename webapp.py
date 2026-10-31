@@ -14,11 +14,13 @@ import json
 import os
 import secrets
 from copy import deepcopy
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
 import pycountry
 import streamlit as st
+import yaml
 from dotenv import set_key
 
 from src import analyse, autodetect, classify, country, db, jobs, llm, scope
@@ -361,6 +363,36 @@ with tab_setup:
     new["category_terms"] = {c: [x.strip() for x in v if x.strip()]
                              for c, v in terms.items()}
     autosave(prof, new, "Country setup saved.")
+
+    with st.expander(t("Restore an earlier version")):
+        versions = {v.name: v for v in country.history(code)}
+        if not versions:
+            st.caption(t("No earlier versions yet. One is kept every time this "
+                         "country's settings change."))
+        else:
+            st.caption(t("Covers this tab and the Sources tab. The current settings are "
+                         "kept as a version too, so a restore can be undone."))
+
+            def version_label(name: str) -> str:
+                spec = yaml.safe_load(versions[name].read_text(encoding="utf-8")) or {}
+                when = datetime.strptime(name[:15], "%Y%m%d-%H%M%S")
+                label = t("{when} · {q} search terms, {b} brands",
+                          when=f"{when:%Y-%m-%d %H:%M}", q=len(spec.get("queries") or []),
+                          b=len(spec.get("products") or []))
+                return label + (t(" (earliest)") if name == list(versions)[-1] else "")
+
+            pick = st.selectbox(t("Version"), list(versions), format_func=version_label,
+                                key=f"{code}_version")
+            if st.button(t("Restore this version"), key=f"{code}_restore"):
+                country.restore(code, versions[pick])
+                # Widgets keep their own values across reruns; drop them so they
+                # show the restored settings instead of saving the old ones back.
+                for k in list(st.session_state):
+                    if str(k).startswith(f"{code}_") and not str(k).startswith(f"{code}_run"):
+                        del st.session_state[k]
+                st.session_state["_toast"] = t("Restored the version from {when}.",
+                                               when=version_label(pick).split(" · ")[0])
+                st.rerun()
 
 # ==================================================================== sources
 with tab_sources:

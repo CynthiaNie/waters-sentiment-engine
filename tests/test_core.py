@@ -248,6 +248,25 @@ def test_profile_round_trip(tmp_path, monkeypatch):
         country.load("../etc")
 
 
+def test_every_save_keeps_the_previous_version(tmp_path, monkeypatch):
+    monkeypatch.setattr(country, "COUNTRY_DIR", tmp_path)
+    monkeypatch.setattr(country, "KEEP_VERSIONS", 3)
+    prof = {"code": "my", "name": "Malaysia", "queries": [f"q{i}" for i in range(15)]}
+    country.save(prof)
+    assert country.history("my") == [], "nothing to keep before the first save"
+    for n in (10, 5, 4, 3, 2):
+        country.save({**prof, "queries": prof["queries"][:n]})
+    versions = country.history("my")
+    assert len(versions) == 3
+    assert len(country.load("my")["queries"]) == 2
+    original = versions[-1]
+    assert original.read_text().count("- q") == 15, "the oldest version is never pruned"
+    country.restore("my", original)
+    assert len(country.load("my")["queries"]) == 15
+    country.restore("my", country.history("my")[0])  # a restore can be undone
+    assert len(country.load("my")["queries"]) == 2
+
+
 def test_singapore_profile_uses_per_country_paths_and_keeps_sources():
     sg = country.load("sg")
     p = country.paths(sg)

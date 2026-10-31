@@ -41,6 +41,16 @@ ZH: dict[str, str] = {
     "⚙ Settings": "⚙ 设置",
     "Saved.": "已保存。",
     "Changes are saved automatically.": "修改会自动保存。",
+    "Restore an earlier version": "恢复之前的版本",
+    "No earlier versions yet. One is kept every time this country's settings change.":
+        "还没有历史版本。此国家的设置每次改动时都会保存一个版本。",
+    "Covers this tab and the Sources tab. The current settings are kept as a version too, so a restore can be undone.":
+        "包括本页和「来源」页的设置。当前设置也会存为一个版本，所以恢复之后还能撤回。",
+    "{when} · {q} search terms, {b} brands": "{when} · {q} 个搜索词，{b} 个品牌",
+    " (earliest)": "（最早）",
+    "Version": "版本",
+    "Restore this version": "恢复此版本",
+    "Restored the version from {when}.": "已恢复到 {when} 的版本。",
     "Save": "保存",
     "Remove": "移除",
     "Pause": "暂停",

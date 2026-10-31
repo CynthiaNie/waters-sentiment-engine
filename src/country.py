@@ -15,6 +15,7 @@ from __future__ import annotations
 import os
 import re
 from copy import deepcopy
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -94,10 +95,46 @@ def load(code: str | None = None) -> dict[str, Any]:
 def save(profile: dict[str, Any]) -> Path:
     p = _path(profile["code"])
     p.parent.mkdir(parents=True, exist_ok=True)
+    _archive(profile["code"])
     # Comments are not preserved: the web app owns the file once it saves it.
     p.write_text(yaml.safe_dump(_body(profile), sort_keys=False, allow_unicode=True,
                                 width=100), encoding="utf-8")
     return p
+
+
+# --------------------------------------------------------------------- history
+# Every save first copies the file it replaces, because the web app saves on
+# each change and has no undo. The oldest copy is kept for good: it is the
+# setup as it was before the web app first changed it.
+KEEP_VERSIONS = 100
+
+
+def _history_dir(code: str) -> Path:
+    return COUNTRY_DIR / ".history" / code
+
+
+def _archive(code: str) -> None:
+    p = _path(code)
+    if not p.exists():
+        return
+    d = _history_dir(code)
+    d.mkdir(parents=True, exist_ok=True)
+    (d / f"{datetime.now():%Y%m%d-%H%M%S-%f}.yaml").write_bytes(p.read_bytes())
+    old = sorted(d.glob("*.yaml"))
+    for f in old[1:len(old) - KEEP_VERSIONS + 1]:
+        f.unlink()
+
+
+def history(code: str) -> list[Path]:
+    """Earlier versions of a country's file, newest first."""
+    return sorted(_history_dir(code).glob("*.yaml"), reverse=True)
+
+
+def restore(code: str, version: Path) -> None:
+    """Put an earlier version back. The current file is archived first, so a
+    restore can itself be undone."""
+    _archive(code)
+    _path(code).write_bytes(version.read_bytes())
 
 
 def same(a: dict[str, Any], b: dict[str, Any]) -> bool:
