@@ -67,8 +67,9 @@ if "ui_lang" not in st.session_state:
 LANG = st.session_state["ui_lang"]
 
 
-def t(text: str, **kw) -> str:
-    """Interface text in the chosen language; English is the key and fallback."""
+def t(text: str, /, **kw) -> str:
+    """Interface text in the chosen language; English is the key and fallback.
+    `text` is positional-only so a placeholder may be called {text} too."""
     out = ZH.get(text, text) if LANG == "zh" else text
     return out.format(**kw) if kw else out
 
