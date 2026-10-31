@@ -181,6 +181,8 @@ def run(limit: int | None = None, taxonomy_path: str = "config/waters.yaml",
         langs: dict[int, str] = {}
         try:
             result = classify_batch(chunk, tax, country_name, langs)
+        except llm.LLMStop:
+            raise  # every later batch would fail the same way
         except Exception as exc:
             failures += len(chunk)
             log.error("batch failed at offset %s: %s", start, exc)

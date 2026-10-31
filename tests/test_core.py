@@ -360,6 +360,31 @@ def test_provider_errors_are_translatable(monkeypatch):
     assert e.template in i18n.ZH and "DeepSeek" in str(e)
 
 
+def test_rejected_key_stops_classification_after_one_batch(monkeypatch):
+    import contextlib
+    import httpx
+    monkeypatch.setenv("LLM_PRESET", "deepseek")
+    monkeypatch.setenv("LLM_API_KEY", "wrong")
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: httpx.Response(401, text="bad key"))
+    with pytest.raises(llm.LLMStop):
+        llm.complete_json("s", "u", {}, model="deepseek-chat")
+
+    calls = []
+
+    def fake_batch(*a, **k):
+        calls.append(1)
+        llm.complete_json("s", "u", {}, model="deepseek-chat")
+
+    monkeypatch.setattr(classify, "classify_batch", fake_batch)
+    monkeypatch.setattr(classify, "load_taxonomy", lambda path: {})
+    monkeypatch.setattr(db, "connect", lambda *a: contextlib.nullcontext())
+    monkeypatch.setattr(db, "unclassified", lambda con, limit: [
+        {"id": i, "raw_text": "t"} for i in range(100)])
+    with pytest.raises(llm.LLMStop):
+        classify.run()
+    assert calls == [1], "a rejected key must not be retried on every batch"
+
+
 def test_spot_check_records_and_summarises(con):
     sid = db.upsert_source(con, "s", "youtube")
     did = db.insert_document(con, source_id=sid, raw_text="heats fast but tank grows mould")

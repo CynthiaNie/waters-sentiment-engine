@@ -62,6 +62,10 @@ class LLMError(UserError):
     pass
 
 
+class LLMStop(LLMError):
+    """The provider cannot be used this run: key rejected, model not found."""
+
+
 def preset() -> str:
     return os.getenv("LLM_PRESET", "claude")
 
@@ -147,9 +151,9 @@ def _anthropic(system: str, user: str, schema: dict, model: str, max_tokens: int
         else:
             msg = client.messages.create(**kwargs)
     except anthropic.AuthenticationError:
-        raise LLMError("The Anthropic API key was rejected. Check it in Settings.")
+        raise LLMStop("The Anthropic API key was rejected. Check it in Settings.")
     except anthropic.NotFoundError:
-        raise LLMError("Model {model} is not available to this key. Pick another in "
+        raise LLMStop("Model {model} is not available to this key. Pick another in "
                        "Settings.", model=model)
     except anthropic.RateLimitError:
         raise LLMError("Rate limit reached. Wait a minute and retry.")
@@ -197,9 +201,9 @@ def _openai_compatible(system: str, user: str, schema: dict, model: str,
             last = r
             continue
         if r.status_code in (401, 403):
-            raise LLMError("The API key was rejected. Check it in Settings.")
+            raise LLMStop("The API key was rejected. Check it in Settings.")
         if r.status_code == 404:
-            raise LLMError("Model {model} or the endpoint address was not found.", model=model)
+            raise LLMStop("Model {model} or the endpoint address was not found.", model=model)
         if r.status_code == 429:
             raise LLMError("Rate limit or balance reached. Wait, or check the account.")
         if r.status_code >= 400:

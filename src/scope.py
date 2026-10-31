@@ -233,6 +233,8 @@ def run(profile: dict[str, Any], recheck: bool = False) -> dict[str, int]:
             batch = todo[start:start + BATCH]
             try:
                 verdicts = judge(batch, name, profile.get("currency", ""))
+            except llm.LLMStop:
+                raise  # every later batch would fail the same way
             except Exception as exc:
                 log.error("market check failed for %s video(s): %s", len(batch), exc)
                 result["failed"] += len(batch)
