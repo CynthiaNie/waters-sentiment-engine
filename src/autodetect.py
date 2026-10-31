@@ -338,10 +338,12 @@ DRAFT_SCHEMA = {
             "required": CATEGORIES, "additionalProperties": False},
         "subreddits": {"type": "array", "items": {"type": "string"}},
         "suggested_sites": {"type": "array", "items": {"type": "string"}},
-        "notes": {"type": "string"},
+        "notes_en": {"type": "string"},
+        "notes_zh": {"type": "string"},
     },
     "required": ["code", "name", "languages", "currency", "youtube_region", "queries",
-                 "products", "category_terms", "subreddits", "suggested_sites", "notes"],
+                 "products", "category_terms", "subreddits", "suggested_sites",
+                 "notes_en", "notes_zh"],
     "additionalProperties": False,
 }
 
@@ -376,8 +378,9 @@ For the requested country return:
   Names, not URLs. Exclude marketplaces (Shopee, Lazada, Amazon and the like),
   which the study does not collect from, and anything behind a login such as
   Facebook groups.
-- notes: two or three sentences on what the user should check, e.g. brands you were
-  unsure of or market facts that may be out of date.
+- notes_en: two or three sentences on what the user should check, e.g. brands you
+  were unsure of or market facts that may be out of date. notes_zh: the same in
+  Simplified Chinese. The interface shows the one matching its language.
 
 This is a draft that a researcher will edit before any collection runs. Prefer
 leaving something out over guessing."""
@@ -394,16 +397,18 @@ _EXAMPLE = {
 }
 
 
-def draft_country(name: str, lang: str = "en") -> dict[str, Any]:
+def draft_country(name: str) -> dict[str, Any]:
     user = (f"Country: {name}\n\nFor reference, part of the Singapore profile:\n"
             f"{json.dumps(_EXAMPLE, ensure_ascii=False)}")
-    d = _ask(_in_language(DRAFT_SYSTEM, "notes", lang), user, DRAFT_SCHEMA)
+    d = _ask(DRAFT_SYSTEM, user, DRAFT_SCHEMA)
     code = (d["code"] or "").strip().lower()
-    suggested = ", ".join(d["suggested_sites"])
-    notes = d["notes"].strip()
-    if suggested:
-        notes += (f"\n值得粘贴帖子的网站：{suggested}。" if lang == "zh"
-                  else f"\nSites worth pasting threads from: {suggested}.")
+    sites = ", ".join(d["suggested_sites"])
+    en = ("AI-drafted; review brands and queries before collecting.\n"
+          + d["notes_en"].strip())
+    zh = "由 AI 起草；采集前请检查品牌和搜索词。\n" + d["notes_zh"].strip()
+    if sites:
+        en += f"\nSites worth pasting threads from: {sites}."
+        zh += f"\n值得粘贴帖子的网站：{sites}。"
     return {
         "code": code,
         "name": d["name"] or name,
@@ -418,7 +423,5 @@ def draft_country(name: str, lang: str = "en") -> dict[str, Any]:
                    "limit_per_query": 25, "comments": True},
         "websites": [],
         "custom_apis": [],
-        "notes": (f"由 AI 起草；采集前请检查品牌和搜索词。\n{notes}"
-                  if lang == "zh" else
-                  f"AI-drafted; review brands and queries before collecting.\n{notes}"),
+        "notes": {"en": en, "zh": zh},
     }

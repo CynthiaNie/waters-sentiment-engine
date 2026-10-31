@@ -200,6 +200,18 @@ def _body(profile: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in profile.items() if k not in DEFAULTS or v != DEFAULTS[k]}
 
 
+_CJK = re.compile(r"[\u4e00-\u9fff]")
+
+
+def notes(profile: dict[str, Any]) -> dict[str, str]:
+    """The notes by interface language. Older profiles hold one string, written
+    in whichever language the interface had when the country was drafted."""
+    n = profile.get("notes") or ""
+    if isinstance(n, dict):
+        return {"en": n.get("en") or "", "zh": n.get("zh") or ""}
+    return {"en": "", "zh": n} if _CJK.search(n) else {"en": n, "zh": ""}
+
+
 def paths(profile: dict[str, Any]) -> dict[str, Path]:
     code = profile["code"]
     over = profile.get("paths") or {}

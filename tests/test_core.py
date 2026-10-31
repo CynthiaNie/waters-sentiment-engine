@@ -611,3 +611,24 @@ def test_market_check_flags_off_market_videos_and_analysis_ignores_them(
         scope.apply(c, "Singapore", keep_global=True)
         assert c.execute("SELECT in_scope FROM sources WHERE id = ?",
                          (glob,)).fetchone()[0] == 1
+
+
+def test_drafted_notes_come_in_both_interface_languages(monkeypatch):
+    seen = {}
+
+    def fake_ask(system, user, schema):
+        seen["system"] = system
+        return {"code": "MY", "name": "Malaysia", "languages": ["ms", "en"],
+                "currency": "myr", "youtube_region": "my", "queries": [], "products": [],
+                "category_terms": {}, "subreddits": [], "suggested_sites": ["Lowyat"],
+                "notes_en": "Check Coway.", "notes_zh": "请核实 Coway。"}
+    monkeypatch.setattr(autodetect, "_ask", fake_ask)
+    n = autodetect.draft_country("Malaysia")["notes"]
+    assert "Check Coway." in n["en"] and "Lowyat" in n["en"]
+    assert "请核实 Coway。" in n["zh"] and "Lowyat" in n["zh"]
+    assert "notes_zh" in seen["system"]
+    assert country.notes({"notes": n}) == n
+    # Older profiles hold one string in whichever language was in use.
+    assert country.notes({"notes": "Check brands."}) == {"en": "Check brands.", "zh": ""}
+    assert country.notes({"notes": "请检查品牌。"}) == {"en": "", "zh": "请检查品牌。"}
+    assert country.notes({}) == {"en": "", "zh": ""}

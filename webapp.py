@@ -234,11 +234,10 @@ with st.sidebar:
         if c1.button(t("Draft with AI"), disabled=pick is None, type="primary"):
             with st.spinner(t("Drafting a profile for {name}…", name=country_label(pick))):
                 try:
-                    # The model is given the English name; notes come back in the
-                    # interface language.
+                    # The model is given the English name; notes come back in both
+                    # interface languages.
                     new = autodetect.draft_country(
-                        _NAME_FIX.get(pick) or pycountry.countries.get(alpha_2=pick).name,
-                        lang=LANG)
+                        _NAME_FIX.get(pick) or pycountry.countries.get(alpha_2=pick).name)
                 except Exception as exc:
                     st.error(err(exc))
         if c2.button(t("Start empty"), disabled=pick is None,
@@ -291,8 +290,9 @@ if "_toast" in st.session_state:
     st.toast(st.session_state.pop("_toast"), icon="✅")
 
 st.header(cname)
-if prof.get("notes"):
-    st.info(prof["notes"])
+_notes = country.notes(prof)
+if any(_notes.values()):
+    st.info(_notes.get(LANG) or next(v for v in _notes.values() if v))
 
 tab_setup, tab_sources, tab_run, tab_results, tab_settings = st.tabs(
     [t("1 · Country setup"), t("2 · Sources"), t("3 · Run"), t("4 · Results"),
@@ -375,6 +375,17 @@ with tab_setup:
         for _, r in pdf.iterrows() if pd.notna(r["brand"]) and str(r["brand"]).strip()]
     new["category_terms"] = {c: [x.strip() for x in v if x.strip()]
                              for c, v in terms.items()}
+    with st.expander(t("Notes shown at the top of the page")):
+        st.caption(t("Each language shows its own text; a blank one falls back to the "
+                     "other. Clear both to hide the box."))
+        cur = country.notes(prof)
+        typed = {"en": st.text_area("English", cur["en"], key=f"{code}_notes_en"),
+                 "zh": st.text_area("中文", cur["zh"], key=f"{code}_notes_zh")}
+    # Only touched when edited, so a profile with old one-string notes is not
+    # rewritten just by opening it.
+    if {k: v.strip() for k, v in typed.items()} != {k: v.strip() for k, v in cur.items()}:
+        new["notes"] = ({k: v.strip() for k, v in typed.items()}
+                        if any(v.strip() for v in typed.values()) else "")
     autosave(prof, new, "Country setup saved.")
 
     with st.expander(t("Restore an earlier version")):
