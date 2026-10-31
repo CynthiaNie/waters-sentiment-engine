@@ -174,7 +174,7 @@ python -m src.cli --country th collect --source youtube --limit 50
 python -m src.cli --country th scope         # market check (classify runs it too)
 python -m src.cli --country th classify
 python -m src.cli --country th export
-python -m src.cli --country th full          # all three
+python -m src.cli --country th full          # all three (--limit N, --classify-limit N)
 ```
 
 ## Layout

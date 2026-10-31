@@ -623,7 +623,8 @@ with tab_run:
         (b1, "1 · Collect", ["collect", "--source", source] + (["--limit", str(lim)] if lim else [])),
         (b2, "2 · Classify", ["classify"] + (["--limit", str(clim)] if clim else [])),
         (b3, "3 · Export workbook", ["export"]),
-        (b4, "Run all three", ["full"]),
+        (b4, "Run all three", ["full"] + (["--limit", str(lim)] if lim else [])
+         + (["--classify-limit", str(clim)] if clim else [])),
     ]
     for col, label, args in actions:
         if col.button(t(label), key=f"{code}_run_{label}", disabled=busy or bool(missing),

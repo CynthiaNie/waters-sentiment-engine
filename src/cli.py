@@ -233,7 +233,9 @@ def main() -> None:
 
     sub.add_parser("analyse")
     sub.add_parser("export")
-    sub.add_parser("full")
+    fu = sub.add_parser("full")
+    fu.add_argument("--limit", type=int, help="max items per source")
+    fu.add_argument("--classify-limit", type=int, help="max documents to classify")
     sub.add_parser("counts")
 
     ins = sub.add_parser("inspect")
@@ -337,9 +339,9 @@ def main() -> None:
 
     elif a.cmd == "full":
         db.init()
-        do_collect(profile, "all", None, False)
+        do_collect(profile, "all", a.limit, False)
         do_scope(profile)
-        console.print(classify.run(country_name=profile["name"]))
+        console.print(classify.run(limit=a.classify_limit, country_name=profile["name"]))
         do_export(profile)
 
     elif a.cmd == "inspect":
