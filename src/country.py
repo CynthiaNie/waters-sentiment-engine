@@ -94,6 +94,19 @@ def load(code: str | None = None) -> dict[str, Any]:
 def save(profile: dict[str, Any]) -> Path:
     p = _path(profile["code"])
     p.parent.mkdir(parents=True, exist_ok=True)
+    # Comments are not preserved: the web app owns the file once it saves it.
+    p.write_text(yaml.safe_dump(_body(profile), sort_keys=False, allow_unicode=True,
+                                width=100), encoding="utf-8")
+    return p
+
+
+def same(a: dict[str, Any], b: dict[str, Any]) -> bool:
+    """True when saving either would write the same settings, so the web app can
+    save on every change without rewriting a file that did not change."""
+    return _body(a) == _body(b)
+
+
+def _body(profile: dict[str, Any]) -> dict[str, Any]:
     profile = deepcopy(profile)
     # Keep the file in the short hand-written form: a query in the primary
     # language is a plain string, and empty aliases are left out.
@@ -105,11 +118,7 @@ def save(profile: dict[str, Any]) -> Path:
         if not prod.get("aliases"):
             prod.pop("aliases", None)
     # Drop keys that only restate a default, so hand-edited files stay short.
-    # Comments are not preserved: the web app owns the file once it saves it.
-    body = {k: v for k, v in profile.items() if k not in DEFAULTS or v != DEFAULTS[k]}
-    p.write_text(yaml.safe_dump(body, sort_keys=False, allow_unicode=True, width=100),
-                 encoding="utf-8")
-    return p
+    return {k: v for k, v in profile.items() if k not in DEFAULTS or v != DEFAULTS[k]}
 
 
 def paths(profile: dict[str, Any]) -> dict[str, Path]:

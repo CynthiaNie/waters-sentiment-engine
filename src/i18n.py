@@ -40,6 +40,7 @@ ZH: dict[str, str] = {
     "4 · Results": "4 · 结果",
     "⚙ Settings": "⚙ 设置",
     "Saved.": "已保存。",
+    "Changes are saved automatically.": "修改会自动保存。",
     "Save": "保存",
     "Remove": "移除",
     "Pause": "暂停",

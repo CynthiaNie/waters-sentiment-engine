@@ -36,7 +36,7 @@ Everything is stored in a local `.env` file. It holds secrets: never share or co
 ### Running a country
 
 1. **Sidebar:** pick a country, or **Add a country** → **Draft with AI** (or **Start empty**).
-2. **1 · Country setup:** check the languages, search terms and brand list, then save.
+2. **1 · Country setup:** check the languages, search terms and brand list. Changes save automatically.
    A drafted profile is a starting point: verify the brands before collecting.
 3. **2 · Sources:** YouTube is on by default. Optionally paste forum/review page
    addresses, a custom API, Reddit credentials, or upload a hand-collected CSV.

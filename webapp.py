@@ -13,6 +13,7 @@ import gettext
 import json
 import os
 import secrets
+from copy import deepcopy
 from pathlib import Path
 
 import pandas as pd
@@ -147,6 +148,23 @@ def save(prof: dict, msg: str = "Saved.") -> None:
     st.rerun()
 
 
+# Settings save as soon as a widget changes. The rerun shows the stored value at
+# once, before the next edit, so a table edit is never lost or applied twice.
+def autosave(old: dict, new: dict, msg: str) -> None:
+    if not country.same(old, new):
+        country.save(new)
+        st.session_state["_toast"] = t(msg)
+        st.rerun()
+
+
+def env_autosave(want: dict[str, str], have: dict[str, str], msg: str) -> None:
+    if want != have:
+        for k, v in want.items():
+            env_set(k, v)
+        st.session_state["_toast"] = t(msg)
+        st.rerun()
+
+
 def db_counts(prof: dict) -> dict | None:
     if not country.paths(prof)["db"].exists():
         return None
@@ -254,6 +272,8 @@ with st.sidebar:
 flash = st.empty()
 if "_flash" in st.session_state:
     flash.success(st.session_state.pop("_flash"))
+if "_toast" in st.session_state:
+    st.toast(st.session_state.pop("_toast"), icon="✅")
 
 st.header(cname)
 if prof.get("notes"):
@@ -324,27 +344,29 @@ with tab_setup:
                                         accept_new_options=True,
                                         key=f"{code}_terms_{cat}")
 
-    if st.button(t("Save country setup"), type="primary", key=f"{code}_save_setup"):
-        prof["languages"] = list(langs) or ["en"]
-        prof["youtube"]["region"] = region
-        prof["currency"] = currency or ""
-        prof["queries"] = [
-            {"text": str(r["text"]).strip(),
-             "lang": (str(r["lang"]).strip() if pd.notna(r["lang"]) and str(r["lang"]).strip()
-                      else prof["languages"][0])}
-            for _, r in qdf.iterrows() if pd.notna(r["text"]) and str(r["text"]).strip()]
-        prof["products"] = [
-            {"brand": str(r["brand"]).strip(), "category": r["category"],
-             "models": split_csv(r["models"]), "aliases": split_csv(r["aliases"])}
-            for _, r in pdf.iterrows() if pd.notna(r["brand"]) and str(r["brand"]).strip()]
-        prof["category_terms"] = {c: [x.strip() for x in v if x.strip()]
-                                  for c, v in terms.items()}
-        save(prof, "Country setup saved.")
+    st.caption(t("Changes are saved automatically."))
+    new = deepcopy(prof)
+    new["languages"] = list(langs) or ["en"]
+    new["youtube"]["region"] = region
+    new["currency"] = currency or ""
+    new["queries"] = [
+        {"text": str(r["text"]).strip(),
+         "lang": (str(r["lang"]).strip() if pd.notna(r["lang"]) and str(r["lang"]).strip()
+                  else new["languages"][0])}
+        for _, r in qdf.iterrows() if pd.notna(r["text"]) and str(r["text"]).strip()]
+    new["products"] = [
+        {"brand": str(r["brand"]).strip(), "category": r["category"],
+         "models": split_csv(r["models"]), "aliases": split_csv(r["aliases"])}
+        for _, r in pdf.iterrows() if pd.notna(r["brand"]) and str(r["brand"]).strip()]
+    new["category_terms"] = {c: [x.strip() for x in v if x.strip()]
+                             for c, v in terms.items()}
+    autosave(prof, new, "Country setup saved.")
 
 # ==================================================================== sources
 with tab_sources:
     # ---------------------------------------------------------------- youtube
     st.subheader(t("YouTube (default)"))
+    st.caption(t("Changes are saved automatically."))
     if not has("YOUTUBE_API_KEY"):
         st.warning(t("No YouTube API key yet. Add it in Settings."))
     c1, c2, c3 = st.columns(3)
@@ -367,13 +389,14 @@ with tab_sources:
                         help=t("For example general science explainers with comments "
                                "from everywhere. Off by default: they say little about "
                                "this market."))
-    if st.button(t("Save YouTube settings"), key=f"{code}_yt_save"):
-        prof["youtube"].update(enabled=yt_on, max_videos=int(yt_vid),
-                               max_comments=int(yt_com), keep_global=bool(yt_glob))
-        if country.paths(prof)["db"].exists():
-            with db.connect() as con:  # stored verdicts, so no AI call is needed
-                scope.apply(con, prof["name"], bool(yt_glob))
-        save(prof, "YouTube settings saved.")
+    new = deepcopy(prof)
+    new["youtube"].update(enabled=yt_on, max_videos=int(yt_vid),
+                          max_comments=int(yt_com), keep_global=bool(yt_glob))
+    if (bool(yt_glob) != bool(prof["youtube"].get("keep_global", False))
+            and country.paths(prof)["db"].exists()):
+        with db.connect() as con:  # stored verdicts, so no AI call is needed
+            scope.apply(con, prof["name"], bool(yt_glob))
+    autosave(prof, new, "YouTube settings saved.")
 
     st.divider()
     # --------------------------------------------------------------- websites
@@ -545,14 +568,14 @@ with tab_sources:
                              placeholder=t("set (hidden)") if has("REDDIT_CLIENT_SECRET")
                              else "")
         st.caption(t("Register a 'script' app at reddit.com/prefs/apps to get these."))
-        if st.button(t("Save Reddit settings"), key=f"{code}_rd_save"):
-            if rid:
-                env_set("REDDIT_CLIENT_ID", rid)
-            if rsec:
-                env_set("REDDIT_CLIENT_SECRET", rsec)
-            rd.update(enabled=rd_on, subreddits=[x.strip().removeprefix("r/")
-                                                 for x in subs if x.strip()])
-            save(prof, "Reddit settings saved.")
+        # A blank key field keeps the stored value.
+        want = {k: v.strip() for k, v in (("REDDIT_CLIENT_ID", rid),
+                                          ("REDDIT_CLIENT_SECRET", rsec)) if v.strip()}
+        env_autosave(want, {k: os.getenv(k, "") for k in want}, "Reddit settings saved.")
+        new = deepcopy(prof)
+        new["reddit"].update(enabled=rd_on, subreddits=[x.strip().removeprefix("r/")
+                                                        for x in subs if x.strip()])
+        autosave(prof, new, "Reddit settings saved.")
 
     st.divider()
     # ------------------------------------------------------------------ manual
@@ -786,6 +809,7 @@ with tab_results:
 with tab_settings:
     st.caption(t("Stored in the local .env file on this computer only. Leave a key "
                  "field blank to keep the current value."))
+    st.caption(t("Changes are saved automatically."))
 
     # ----------------------------------------------------------- organisation
     st.subheader(t("Organisation"))
@@ -799,11 +823,8 @@ with tab_settings:
     st.caption(t("Websites will see: {ua}", ua=f"`{org or '…'}-ConsumerResearch/1.0 "
                                                 f"(consumer sentiment research; contact "
                                                 f"{contact or '…'})`"))
-    if st.button(t("Save organisation"), key="set_org_save"):
-        env_set("ORG_NAME", org.strip())
-        env_set("RESEARCH_CONTACT", contact.strip())
-        st.session_state["_flash"] = t("Saved.")
-        st.rerun()
+    env_autosave({"ORG_NAME": org.strip(), "RESEARCH_CONTACT": contact.strip()},
+                 {k: os.getenv(k, "") for k in ("ORG_NAME", "RESEARCH_CONTACT")}, "Saved.")
 
     st.divider()
     # ------------------------------------------------------------ ai provider
@@ -846,27 +867,29 @@ with tab_settings:
                               help=t("Reads websites, maps APIs and drafts countries. "
                                      "Automatic: the provider's recommended setup model, "
                                      "or the classification model if it has none."))
-    if not same:
-        st.warning(t("Changing provider or model: results are no longer comparable with "
-                     "earlier runs. Do a new spot-check after classifying."))
-    c1, c2 = st.columns(2)
-    if c1.button(t("Save AI provider"), type="primary", key="set_ai_save"):
-        env_set("LLM_PRESET", preset)
-        env_set("LLM_BASE_URL", base.strip() if preset == "custom" else "")
-        if key_val:
-            env_set(key_name, key_val.strip())
-        env_set("CLASSIFY_MODEL", (cls_model or "").strip())
-        env_set("HELPER_MODEL", "" if help_model in (auto, None) else help_model.strip())
-        st.session_state["_flash"] = t("AI provider saved.")
-        st.rerun()
-    if c2.button(t("Test connection"), key="set_ai_test", disabled=not same):
+    want = {"LLM_PRESET": preset,
+            "LLM_BASE_URL": base.strip() if preset == "custom" else "",
+            "CLASSIFY_MODEL": (cls_model or "").strip(),
+            "HELPER_MODEL": "" if help_model in (auto, None) else help_model.strip()}
+    # Compared with what is in effect, so opening the app on a fresh .env, where
+    # the defaults apply, writes nothing.
+    have = {"LLM_PRESET": llm.preset(), "LLM_BASE_URL": os.getenv("LLM_BASE_URL", ""),
+            "CLASSIFY_MODEL": llm.classify_model(),
+            "HELPER_MODEL": os.getenv("HELPER_MODEL", "")}
+    if key_val.strip():  # a blank key field keeps the stored key
+        want[key_name], have[key_name] = key_val.strip(), os.getenv(key_name, "")
+    changed_model = (want["LLM_PRESET"], want["CLASSIFY_MODEL"]) != \
+        (have["LLM_PRESET"], have["CLASSIFY_MODEL"])
+    env_autosave(want, have,
+                 "Changing provider or model: results are no longer comparable with "
+                 "earlier runs. Do a new spot-check after classifying."
+                 if changed_model else "AI provider saved.")
+    if st.button(t("Test connection"), key="set_ai_test"):
         with st.spinner(t("Testing…")):
             try:
                 st.success(t("Connected: {p} / {m}", p=llm.describe(), m=llm.ping()))
             except Exception as exc:
                 st.error(err(exc))
-    if not same:
-        st.caption(t("Save first, then test."))
 
     st.divider()
     # ---------------------------------------------------------------- youtube
@@ -877,12 +900,10 @@ with tab_settings:
                            placeholder=t("set (hidden)") if has("YOUTUBE_API_KEY") else "",
                            help=t("Google Cloud Console → enable YouTube Data API v3 → "
                                   "Credentials"))
-    c1, c2 = st.columns(2)
-    if c1.button(t("Save YouTube key"), key="set_yt_save", disabled=not yt_key):
-        env_set("YOUTUBE_API_KEY", yt_key.strip())
-        st.session_state["_flash"] = t("Saved.")
-        st.rerun()
-    if c2.button(t("Test YouTube"), key="set_yt_test", disabled=not has("YOUTUBE_API_KEY")):
+    if yt_key.strip():  # a blank key field keeps the stored key
+        env_autosave({"YOUTUBE_API_KEY": yt_key.strip()},
+                     {"YOUTUBE_API_KEY": os.getenv("YOUTUBE_API_KEY", "")}, "Saved.")
+    if st.button(t("Test YouTube"), key="set_yt_test", disabled=not has("YOUTUBE_API_KEY")):
         import httpx
         try:
             r = httpx.get("https://www.googleapis.com/youtube/v3/i18nRegions",
