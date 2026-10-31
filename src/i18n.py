@@ -53,6 +53,7 @@ ZH: dict[str, str] = {
     "Delete this country": "删除此国家",
     "Clear saved key": "清除已保存的密钥",
     "Clear data": "清除数据",
+    "Section": "页面",
     "Notes shown at the top of the page": "页面顶部显示的说明",
     "Each language shows its own text; a blank one falls back to the other. Clear both to hide the box.":
         "每种界面语言显示各自的文字；某种语言留空时显示另一种。两种都清空则不显示蓝框。",

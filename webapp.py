@@ -210,7 +210,7 @@ def profile_label(c: str) -> str:
 # nowhere else and give them back.
 _sticky = st.session_state.setdefault("_sticky", {})
 for k in ["country"] + [f"{c}_{w}" for c in codes
-                        for w in ("run_lim", "run_clim", "clear_what")]:
+                        for w in ("run_lim", "run_clim", "clear_what")] + ["section"]:
     if k in st.session_state:
         _sticky[k] = st.session_state[k]
     elif k in _sticky:
@@ -305,12 +305,40 @@ _notes = country.notes(prof)
 if any(_notes.values()):
     st.info(_notes.get(LANG) or next(v for v in _notes.values() if v))
 
-tab_setup, tab_sources, tab_run, tab_results, tab_settings = st.tabs(
-    [t("1 · Country setup"), t("2 · Sources"), t("3 · Run"), t("4 · Results"),
-     t("⚙ Settings")])
+# A selector rather than st.tabs: the open tab of st.tabs is known only to the
+# browser, so it reset to the first one whenever the language changed.
+SECTIONS = {"setup": "1 · Country setup", "sources": "2 · Sources", "run": "3 · Run",
+            "results": "4 · Results", "settings": "⚙ Settings"}
+st.session_state.setdefault("section", "setup")
+
+
+def _keep_section() -> None:
+    # Clicking the selected button again would leave nothing selected.
+    if st.session_state["section"] is None:
+        st.session_state["section"] = st.session_state.get("_last_section", "setup")
+
+
+section = st.segmented_control(t("Section"), list(SECTIONS), key="section",
+                               format_func=lambda s: t(SECTIONS[s]),
+                               on_change=_keep_section, label_visibility="collapsed")
+st.session_state["_last_section"] = section
+
+
+@st.fragment(run_every="2s")
+def job_watch():
+    """Runs on every section. The page only redraws on a click, so when a
+    background run ends, redraw it to bring counts and Results up to date."""
+    s = jobs.status(code)
+    if s and s["running"]:
+        st.session_state[f"_watching_{code}"] = True
+    elif st.session_state.pop(f"_watching_{code}", False):
+        st.rerun(scope="app")
+
+
+job_watch()
 
 # ============================================================== country setup
-with tab_setup:
+if section == "setup":
     st.subheader(t("Market"))
     c1, c2, c3 = st.columns([4, 2, 2])
     langs = c1.multiselect(
@@ -448,7 +476,7 @@ with tab_setup:
             st.rerun()
 
 # ==================================================================== sources
-with tab_sources:
+if section == "sources":
     # ---------------------------------------------------------------- youtube
     st.subheader(t("YouTube (default)"))
     st.caption(t("Changes are saved automatically."))
@@ -691,7 +719,7 @@ with tab_sources:
             st.rerun()
 
 # ======================================================================== run
-with tab_run:
+if section == "run":
     plan = []
     if prof["youtube"].get("enabled", True):
         plan.append("YouTube")
@@ -757,12 +785,6 @@ with tab_run:
                 st.code(tail, language=None)
             return
         if s["running"]:
-            st.session_state[f"_watching_{code}"] = True
-        elif st.session_state.pop(f"_watching_{code}", False):
-            # The fragment only redraws itself. When the run ends, redraw the whole
-            # page so the sidebar counts, Results and the run buttons are current.
-            st.rerun(scope="app")
-        if s["running"]:
             st.info(t("⏳ {job} running for {s} s…", job=t(s["label"]),
                       s=int(s["elapsed"])))
             if st.button(t("Stop"), key=f"{code}_stop"):
@@ -811,7 +833,7 @@ with tab_run:
                 st.rerun()
 
 # ==================================================================== results
-with tab_results:
+if section == "results":
     if not counts or not counts["mentions_in_scope"]:
         st.info(t("No classified mentions yet. Collect and classify on the Run tab."))
     else:
@@ -937,7 +959,7 @@ with tab_results:
                            key=f"{code}_dl_{b.name}")
 
 # =================================================================== settings
-with tab_settings:
+if section == "settings":
     st.caption(t("Stored in the local .env file on this computer only. Leave a key "
                  "field blank to keep the current value."))
     st.caption(t("Changes are saved automatically."))
